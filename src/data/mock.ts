@@ -13,43 +13,10 @@ import type {
 } from '../types'
 
 // ── Households ──────────────────────────────────────────────
-export const HOUSEHOLDS: Household[] = [
-  { id: 'hh-1', name: 'The Johnson Family', inviteCode: 'AB7KQ2', guestIds: ['g-1', 'g-2', 'g-3'], maxGuests: 3 },
-  { id: 'hh-2', name: 'Emily & Marcus Reyes', inviteCode: 'RM4XP9', guestIds: ['g-4', 'g-5'], maxGuests: 2 },
-  { id: 'hh-3', name: 'Grandma Patricia', inviteCode: 'GP1LN8', guestIds: ['g-6'], maxGuests: 1, notes: 'Needs wheelchair-accessible seating.' },
-  { id: 'hh-4', name: 'The Nguyen Household', inviteCode: 'NG9TR3', guestIds: ['g-7', 'g-8'], maxGuests: 2 },
-  { id: 'hh-5', name: 'David Cohen & Guest', inviteCode: 'DC5WZ1', guestIds: ['g-9', 'g-10'], maxGuests: 2 },
-  { id: 'hh-6', name: 'The Okafor Family', inviteCode: 'OK3BV7', guestIds: ['g-11', 'g-12', 'g-13'], maxGuests: 4 },
-  { id: 'hh-7', name: 'Sophie Laurent', inviteCode: 'SL8QD4', guestIds: ['g-14'], maxGuests: 2 },
-  { id: 'hh-8', name: 'The Martinez Family', inviteCode: 'MZ2HK6', guestIds: ['g-15', 'g-16', 'g-17'], maxGuests: 3 },
-  { id: 'hh-9', name: 'Aunt Carol & Uncle Ray', inviteCode: 'CR6YF5', guestIds: ['g-18', 'g-19'], maxGuests: 2 },
-  { id: 'hh-10', name: 'Priya & Arjun Patel', inviteCode: 'PP7NM0', guestIds: ['g-20', 'g-21'], maxGuests: 2 },
-]
+export const HOUSEHOLDS: Household[] = []
 
 // ── Guests ──────────────────────────────────────────────────
-export const GUESTS: Guest[] = [
-  { id: 'g-1', firstName: 'Robert', lastName: 'Johnson', email: 'robert.johnson@example.com', householdId: 'hh-1' },
-  { id: 'g-2', firstName: 'Linda', lastName: 'Johnson', email: 'linda.johnson@example.com', householdId: 'hh-1' },
-  { id: 'g-3', firstName: 'Tyler', lastName: 'Johnson', householdId: 'hh-1' },
-  { id: 'g-4', firstName: 'Emily', lastName: 'Reyes', email: 'emily.reyes@example.com', householdId: 'hh-2' },
-  { id: 'g-5', firstName: 'Marcus', lastName: 'Reyes', email: 'marcus.reyes@example.com', householdId: 'hh-2' },
-  { id: 'g-6', firstName: 'Patricia', lastName: 'Whitfield', phone: '555-0142', householdId: 'hh-3' },
-  { id: 'g-7', firstName: 'Kim', lastName: 'Nguyen', email: 'kim.nguyen@example.com', householdId: 'hh-4' },
-  { id: 'g-8', firstName: 'Daniel', lastName: 'Nguyen', householdId: 'hh-4' },
-  { id: 'g-9', firstName: 'David', lastName: 'Cohen', email: 'david.cohen@example.com', householdId: 'hh-5' },
-  { id: 'g-10', firstName: 'Rachel', lastName: 'Green', householdId: 'hh-5' },
-  { id: 'g-11', firstName: 'Chidi', lastName: 'Okafor', email: 'chidi.okafor@example.com', householdId: 'hh-6' },
-  { id: 'g-12', firstName: 'Ada', lastName: 'Okafor', email: 'ada.okafor@example.com', householdId: 'hh-6' },
-  { id: 'g-13', firstName: 'Zara', lastName: 'Okafor', householdId: 'hh-6' },
-  { id: 'g-14', firstName: 'Sophie', lastName: 'Laurent', email: 'sophie.laurent@example.com', householdId: 'hh-7' },
-  { id: 'g-15', firstName: 'Carlos', lastName: 'Martinez', email: 'carlos.martinez@example.com', householdId: 'hh-8' },
-  { id: 'g-16', firstName: 'Maria', lastName: 'Martinez', email: 'maria.martinez@example.com', householdId: 'hh-8' },
-  { id: 'g-17', firstName: 'Lucia', lastName: 'Martinez', householdId: 'hh-8' },
-  { id: 'g-18', firstName: 'Carol', lastName: 'Bennett', email: 'carol.bennett@example.com', householdId: 'hh-9' },
-  { id: 'g-19', firstName: 'Ray', lastName: 'Bennett', householdId: 'hh-9' },
-  { id: 'g-20', firstName: 'Priya', lastName: 'Patel', email: 'priya.patel@example.com', householdId: 'hh-10' },
-  { id: 'g-21', firstName: 'Arjun', lastName: 'Patel', email: 'arjun.patel@example.com', householdId: 'hh-10' },
-]
+export const GUESTS: Guest[] = []
 
 // ── Meal choices ────────────────────────────────────────────
 export const MEAL_CHOICES: MealChoice[] = [
@@ -94,14 +61,4 @@ export const WEDDING_EVENTS: WeddingEvent[] = [
   { id: 'evt-3', name: 'Reception', time: '6:00 PM', endTime: '11:00 PM', location: 'The Grand Ballroom', description: 'Dinner, dancing, and celebration into the night.' },
 ]
 
-// ── Pre-filled RSVPs (for admin dashboard realism) ──────────
-export const RSVP_RESPONSES: RSVPResponse[] = [
-  { householdId: 'hh-1', guestId: 'g-1', attending: true, mealChoiceId: 'meal-chicken', submittedAt: '2026-06-01T14:22:00Z', songRequest: 'September — Earth, Wind & Fire' },
-  { householdId: 'hh-1', guestId: 'g-2', attending: true, mealChoiceId: 'meal-salmon', dietaryRestrictions: 'No shellfish', submittedAt: '2026-06-01T14:22:00Z' },
-  { householdId: 'hh-1', guestId: 'g-3', attending: false, submittedAt: '2026-06-01T14:22:00Z' },
-  { householdId: 'hh-2', guestId: 'g-4', attending: true, mealChoiceId: 'meal-vegetarian', dietaryRestrictions: 'Vegan if possible', submittedAt: '2026-06-03T09:10:00Z', songRequest: 'Dancing Queen — ABBA', notes: 'So happy for you both!' },
-  { householdId: 'hh-2', guestId: 'g-5', attending: true, mealChoiceId: 'meal-chicken', submittedAt: '2026-06-03T09:10:00Z' },
-  { householdId: 'hh-3', guestId: 'g-6', attending: true, mealChoiceId: 'meal-salmon', dietaryRestrictions: 'Soft foods preferred', submittedAt: '2026-06-05T16:45:00Z', notes: 'Wouldn’t miss it for the world.' },
-  { householdId: 'hh-5', guestId: 'g-9', attending: true, mealChoiceId: 'meal-chicken', submittedAt: '2026-06-08T11:30:00Z', songRequest: 'Sweet Caroline — Neil Diamond' },
-  { householdId: 'hh-5', guestId: 'g-10', attending: false, submittedAt: '2026-06-08T11:30:00Z', notes: 'Traveling that week, sadly.' },
-]
+export const RSVP_RESPONSES: RSVPResponse[] = []
