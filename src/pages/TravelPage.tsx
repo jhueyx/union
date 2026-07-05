@@ -16,6 +16,11 @@ export default function TravelPage() {
           Where to Stay
         </p>
         <div className="space-y-4 mb-16">
+          {hotels.length === 0 && (
+            <p className="text-sm text-zinc-400 dark:text-zinc-600">
+              Hotel recommendations coming soon.
+            </p>
+          )}
           {hotels.map((h) => (
             <div
               key={h.id}
@@ -67,6 +72,11 @@ export default function TravelPage() {
           Getting Here
         </p>
         <div className="space-y-6">
+          {transport.length === 0 && (
+            <p className="text-sm text-zinc-400 dark:text-zinc-600">
+              Transport details coming soon.
+            </p>
+          )}
           {transport.map((t) => (
             <div key={t.id} className="border-b border-zinc-100 dark:border-zinc-900 pb-5 last:border-0">
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">

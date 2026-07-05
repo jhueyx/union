@@ -22,6 +22,11 @@ export default function FaqPage() {
       </p>
 
       <div className="max-w-lg mx-auto space-y-12">
+        {FAQ_ITEMS.length === 0 && (
+          <p className="text-sm text-zinc-400 dark:text-zinc-600 text-center">
+            Details coming soon.
+          </p>
+        )}
         {Object.entries(groups).map(([category, items]) => (
           <div key={category}>
             <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 dark:text-zinc-600 mb-4">

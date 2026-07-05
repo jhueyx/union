@@ -9,6 +9,11 @@ export default function SchedulePage() {
       </p>
 
       <div className="max-w-md mx-auto space-y-10">
+        {WEDDING_EVENTS.length === 0 && (
+          <p className="text-sm text-zinc-400 dark:text-zinc-600 text-center">
+            Details coming soon.
+          </p>
+        )}
         {WEDDING_EVENTS.map((evt) => (
           <div
             key={evt.id}

@@ -14,6 +14,11 @@ export default function RegistryPage() {
       </p>
 
       <div className="max-w-md mx-auto space-y-4">
+        {REGISTRY_LINKS.length === 0 && (
+          <p className="text-sm text-zinc-400 dark:text-zinc-600 text-center">
+            Registry details coming soon.
+          </p>
+        )}
         {REGISTRY_LINKS.map((r) => (
           <a
             key={r.id}
