@@ -30,12 +30,15 @@ export const WEDDING = {
 
 Go to `/admin`, log in, and add each household with an invite code. Add guests within each household. The invite codes are what guests use to look themselves up on the RSVP page.
 
-### 3. Update static content (`src/data/mock.ts`)
+### 3. Fill in static content (`src/data/mock.ts`)
 
-- **Registry links** — replace the `#` URLs with real store links
-- **Travel recommendations** — update hotel names, addresses, booking URLs, and room block codes
-- **Wedding events** — update ceremony/cocktail/reception times, locations, and addresses
-- **FAQ answers** — update anything that references placeholder details
+All arrays are currently empty. Add real entries for:
+
+- **`MEAL_CHOICES`** — the menu options guests pick from during RSVP
+- **`REGISTRY_LINKS`** — store name and URL for each registry
+- **`TRAVEL_RECOMMENDATIONS`** — hotels (name, address, booking URL, room block code) and transport info
+- **`WEDDING_EVENTS`** — ceremony, cocktail hour, reception with times and locations
+- **`FAQ_ITEMS`** — questions and answers guests commonly ask
 
 ### 4. Add the engagement photo
 
