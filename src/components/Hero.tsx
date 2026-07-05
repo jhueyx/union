@@ -1,12 +1,9 @@
-import { useState } from 'react'
 import { SITE_MODE, WEDDING } from '../config'
 import Monogram from './Monogram'
-import NotifyForm from './NotifyForm'
 
 const isLive = SITE_MODE === 'live'
 
 export default function Hero() {
-  const [notifyOpen, setNotifyOpen] = useState(false)
 
   return (
     <div className="w-full max-w-[700px] mx-auto text-center">
@@ -85,39 +82,12 @@ export default function Hero() {
             <p>We'll share everything here soon.</p>
           </div>
 
-          {/* CTA */}
-          {!notifyOpen && (
-            <div className="flex flex-col items-center gap-5">
-              <button
-                onClick={() => setNotifyOpen(true)}
-                aria-label="Get notified when the site launches"
-                className={[
-                  'px-9 py-3.5 rounded-[2px]',
-                  'bg-zinc-900 dark:bg-zinc-50',
-                  'text-zinc-50 dark:text-zinc-900',
-                  'text-xs font-medium tracking-[0.2em] uppercase',
-                  'transition-all duration-200 ease-out',
-                  'hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.15)]',
-                  'dark:hover:shadow-[0_4px_20px_rgba(255,255,255,0.08)]',
-                  'active:translate-y-0 active:shadow-none',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4',
-                  'focus-visible:outline-zinc-900 dark:focus-visible:outline-zinc-50',
-                ].join(' ')}
-              >
-                Notify Me
-              </button>
-              <span
-                className="text-xs tracking-[0.25em] uppercase text-zinc-300 dark:text-zinc-700"
-                aria-label="Site coming soon"
-              >
-                Coming Soon
-              </span>
-            </div>
-          )}
-
-          {notifyOpen && (
-            <NotifyForm onDismiss={() => setNotifyOpen(false)} />
-          )}
+          <span
+            className="text-xs tracking-[0.25em] uppercase text-zinc-300 dark:text-zinc-700"
+            aria-label="Site coming soon"
+          >
+            Coming Soon
+          </span>
         </>
       )}
 
