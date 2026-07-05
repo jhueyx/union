@@ -31,7 +31,7 @@ export default function AdminLayout() {
             Admin — Union
           </span>
           <button
-            onClick={() => supabase.auth.signOut()}
+            onClick={() => supabase.auth.signOut({ scope: 'local' })}
             className="text-xs tracking-[0.15em] uppercase text-zinc-600 hover:text-zinc-300 transition-colors"
           >
             Sign Out
