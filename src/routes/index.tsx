@@ -13,6 +13,7 @@ import RegistryPage from '../pages/RegistryPage'
 import FaqPage from '../pages/FaqPage'
 import PhotosPage from '../pages/PhotosPage'
 import GuestbookPage from '../pages/GuestbookPage'
+import StoryPage from '../pages/StoryPage'
 import NotFound from '../pages/NotFound'
 import Dashboard from '../pages/admin/Dashboard'
 
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <Home /> },
+      { path: 'story', element: <StoryPage /> },
       { path: 'save-the-date', element: <SaveTheDate /> },
       { path: 'invitation', element: <Invitation /> },
       { path: 'rsvp', element: <RsvpPage /> },

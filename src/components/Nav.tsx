@@ -4,6 +4,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { SITE_MODE, WEDDING } from '../config'
 
 const LINKS = [
+  { label: 'Our Story', to: '/story' },
   { label: 'Save the Date', to: '/save-the-date' },
   { label: 'Invite', to: '/invitation' },
   { label: 'RSVP', to: '/rsvp' },
