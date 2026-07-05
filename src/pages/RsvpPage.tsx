@@ -1,12 +1,14 @@
-// Union — multi-step RSVP flow. State is structured for a future Supabase swap.
+// Union — multi-step RSVP flow backed by Supabase.
 import { useState } from 'react'
-import { HOUSEHOLDS, GUESTS, MEAL_CHOICES } from '../data/mock'
-import { findHouseholdByCode, getHouseholdGuests } from '../utils'
+import { supabase } from '../lib/supabase'
+import { MEAL_CHOICES } from '../data/mock'
 import type { Household, Guest } from '../types'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 
 type Step = 'lookup' | 'confirm' | 'details' | 'done'
+
+type HouseholdWithGuests = Household & { guests: Guest[] }
 
 interface GuestState {
   guest: Guest
@@ -15,43 +17,60 @@ interface GuestState {
   dietary: string
 }
 
-function lookup(query: string): Household | undefined {
-  const q = query.trim()
-  if (!q) return undefined
-  // Try invite code first
-  const byCode = findHouseholdByCode(q, HOUSEHOLDS)
-  if (byCode) return byCode
-  // Then a loose name match against household name or any guest name
-  const lower = q.toLowerCase()
-  return HOUSEHOLDS.find((h) => {
-    if (h.name.toLowerCase().includes(lower)) return true
-    const members = getHouseholdGuests(h, GUESTS)
-    return members.some((g) =>
-      `${g.firstName} ${g.lastName}`.toLowerCase().includes(lower)
-    )
-  })
+async function lookupHousehold(query: string): Promise<HouseholdWithGuests | null> {
+  const trimmed = query.trim()
+  if (!trimmed) return null
+
+  // Try invite code first (exact, case-insensitive)
+  const { data: byCode } = await supabase
+    .from('households')
+    .select('*, guests(*)')
+    .eq('invite_code', trimmed.toUpperCase())
+    .maybeSingle()
+
+  if (byCode) return byCode as HouseholdWithGuests
+
+  // Fall back to name search across guests
+  const { data: matched } = await supabase
+    .from('guests')
+    .select('household_id')
+    .or(`last_name.ilike.%${trimmed}%,first_name.ilike.%${trimmed}%`)
+    .limit(1)
+
+  if (!matched?.[0]) return null
+
+  const { data: byName } = await supabase
+    .from('households')
+    .select('*, guests(*)')
+    .eq('id', matched[0].household_id)
+    .maybeSingle()
+
+  return (byName as HouseholdWithGuests) ?? null
 }
 
 export default function RsvpPage() {
   const [step, setStep] = useState<Step>('lookup')
   const [query, setQuery] = useState('')
   const [error, setError] = useState('')
-  const [household, setHousehold] = useState<Household | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [household, setHousehold] = useState<HouseholdWithGuests | null>(null)
   const [guestStates, setGuestStates] = useState<GuestState[]>([])
   const [songRequest, setSongRequest] = useState('')
   const [notes, setNotes] = useState('')
 
-  const handleLookup = (e: React.FormEvent) => {
+  const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault()
-    const match = lookup(query)
+    setError('')
+    setLoading(true)
+    const match = await lookupHousehold(query)
+    setLoading(false)
     if (!match) {
-      setError('We couldn’t find an invitation matching that name or code. Please try again.')
+      setError("We couldn't find an invitation matching that name or code. Please try again.")
       return
     }
-    setError('')
     setHousehold(match)
     setGuestStates(
-      getHouseholdGuests(match, GUESTS).map((guest) => ({
+      (match.guests ?? []).map((guest) => ({
         guest,
         attending: null,
         mealChoiceId: '',
@@ -61,35 +80,52 @@ export default function RsvpPage() {
     setStep('confirm')
   }
 
-  const setAttending = (guestId: string, attending: boolean) => {
+  const setAttending = (guestId: string, attending: boolean) =>
     setGuestStates((prev) =>
       prev.map((gs) => (gs.guest.id === guestId ? { ...gs, attending } : gs))
     )
-  }
 
-  const setMeal = (guestId: string, mealChoiceId: string) => {
+  const setMeal = (guestId: string, mealChoiceId: string) =>
     setGuestStates((prev) =>
       prev.map((gs) => (gs.guest.id === guestId ? { ...gs, mealChoiceId } : gs))
     )
-  }
 
-  const setDietary = (guestId: string, dietary: string) => {
+  const setDietary = (guestId: string, dietary: string) =>
     setGuestStates((prev) =>
       prev.map((gs) => (gs.guest.id === guestId ? { ...gs, dietary } : gs))
     )
-  }
 
   const anyAttending = guestStates.some((gs) => gs.attending === true)
   const allAnswered = guestStates.every((gs) => gs.attending !== null)
 
   const handleConfirmNext = () => {
     if (!allAnswered) return
-    // Skip details if nobody is attending — go straight to the closing screen.
     setStep(anyAttending ? 'details' : 'done')
   }
 
-  const handleSubmit = () => {
-    // TODO: replace with Supabase insert of RSVPResponse rows.
+  const handleSubmit = async () => {
+    if (!household) return
+    setLoading(true)
+
+    const rows = guestStates.map((gs) => ({
+      household_id: household.id,
+      guest_id: gs.guest.id,
+      attending: gs.attending ?? false,
+      meal_choice_id: gs.attending ? gs.mealChoiceId || null : null,
+      dietary_restrictions: gs.dietary || null,
+      song_request: gs.attending && songRequest ? songRequest : null,
+      notes: notes || null,
+    }))
+
+    const { error: err } = await supabase
+      .from('rsvp_responses')
+      .upsert(rows, { onConflict: 'guest_id' })
+
+    setLoading(false)
+    if (err) {
+      setError('Something went wrong submitting your RSVP. Please try again.')
+      return
+    }
     setStep('done')
   }
 
@@ -129,8 +165,8 @@ export default function RsvpPage() {
               error={error}
               autoFocus
             />
-            <Button type="submit" variant="primary" size="lg" className="w-full">
-              Search
+            <Button type="submit" variant="primary" size="lg" className="w-full" disabled={loading}>
+              {loading ? 'Searching…' : 'Search'}
             </Button>
           </form>
         </div>
@@ -143,8 +179,7 @@ export default function RsvpPage() {
             Welcome, {household.name}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-10 text-center">
-            Your party of {guestStates.length} is invited. Please let us know who
-            will be joining us.
+            Your party of {guestStates.length} is invited. Please let us know who will be joining us.
           </p>
 
           <div className="space-y-6">
@@ -154,13 +189,10 @@ export default function RsvpPage() {
                 className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 pb-4"
               >
                 <span className="text-sm text-zinc-900 dark:text-zinc-50">
-                  {gs.guest.firstName} {gs.guest.lastName}
+                  {gs.guest.first_name} {gs.guest.last_name}
                 </span>
                 <div className="flex gap-2">
-                  {[
-                    { v: true, label: 'Attending' },
-                    { v: false, label: 'Regrets' },
-                  ].map(({ v, label }) => (
+                  {([{ v: true, label: 'Attending' }, { v: false, label: 'Regrets' }] as const).map(({ v, label }) => (
                     <button
                       key={label}
                       type="button"
@@ -181,15 +213,8 @@ export default function RsvpPage() {
           </div>
 
           <div className="flex items-center justify-between mt-10">
-            <Button variant="ghost" size="sm" onClick={reset}>
-              ← Start over
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={handleConfirmNext}
-              disabled={!allAnswered}
-            >
+            <Button variant="ghost" size="sm" onClick={reset}>← Start over</Button>
+            <Button variant="primary" size="md" onClick={handleConfirmNext} disabled={!allAnswered}>
               Continue
             </Button>
           </div>
@@ -207,17 +232,14 @@ export default function RsvpPage() {
             {attendingGuests.map((gs) => (
               <div key={gs.guest.id}>
                 <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50 mb-4">
-                  {gs.guest.firstName} {gs.guest.lastName}
+                  {gs.guest.first_name} {gs.guest.last_name}
                 </p>
                 <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 dark:text-zinc-600 mb-3">
                   Meal Selection
                 </p>
                 <div className="space-y-2 mb-5">
                   {MEAL_CHOICES.map((meal) => (
-                    <label
-                      key={meal.id}
-                      className="flex items-start gap-3 cursor-pointer group"
-                    >
+                    <label key={meal.id} className="flex items-start gap-3 cursor-pointer group">
                       <span
                         className={[
                           'mt-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors',
@@ -273,18 +295,18 @@ export default function RsvpPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                placeholder="Anything you’d like us to know (optional)"
+                placeholder="Anything you'd like us to know (optional)"
                 className="w-full bg-transparent px-0 py-2 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-600 border-b border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 transition-colors duration-200 resize-none"
               />
             </div>
           </div>
 
+          {error && <p className="text-xs text-red-500 mt-4">{error}</p>}
+
           <div className="flex items-center justify-between mt-12">
-            <Button variant="ghost" size="sm" onClick={() => setStep('confirm')}>
-              ← Back
-            </Button>
-            <Button variant="primary" size="md" onClick={handleSubmit}>
-              Submit RSVP
+            <Button variant="ghost" size="sm" onClick={() => setStep('confirm')}>← Back</Button>
+            <Button variant="primary" size="md" onClick={handleSubmit} disabled={loading}>
+              {loading ? 'Submitting…' : 'Submit RSVP'}
             </Button>
           </div>
         </div>
@@ -298,8 +320,8 @@ export default function RsvpPage() {
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-10 leading-relaxed">
             {anyAttending
-              ? 'We can’t wait to celebrate with you.'
-              : 'We’ll miss you, but thank you for letting us know.'}
+              ? "We can't wait to celebrate with you."
+              : "We'll miss you, but thank you for letting us know."}
           </p>
 
           <div className="text-left border-t border-zinc-100 dark:border-zinc-900 pt-8 space-y-3">
@@ -309,19 +331,12 @@ export default function RsvpPage() {
             {guestStates.map((gs) => {
               const meal = MEAL_CHOICES.find((m) => m.id === gs.mealChoiceId)
               return (
-                <div
-                  key={gs.guest.id}
-                  className="flex items-center justify-between text-sm"
-                >
+                <div key={gs.guest.id} className="flex items-center justify-between text-sm">
                   <span className="text-zinc-900 dark:text-zinc-50">
-                    {gs.guest.firstName} {gs.guest.lastName}
+                    {gs.guest.first_name} {gs.guest.last_name}
                   </span>
                   <span className="text-zinc-500 dark:text-zinc-400">
-                    {gs.attending
-                      ? meal
-                        ? `Attending · ${meal.label}`
-                        : 'Attending'
-                      : 'Regrets'}
+                    {gs.attending ? (meal ? `Attending · ${meal.label}` : 'Attending') : 'Regrets'}
                   </span>
                 </div>
               )
@@ -334,9 +349,7 @@ export default function RsvpPage() {
           </div>
 
           <div className="mt-10">
-            <Button variant="secondary" size="md" onClick={reset}>
-              Update RSVP
-            </Button>
+            <Button variant="secondary" size="md" onClick={reset}>Update RSVP</Button>
           </div>
         </div>
       )}

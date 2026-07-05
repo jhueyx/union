@@ -1,11 +1,26 @@
 // Union — personalized invite landing at /i/:inviteCode.
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { HOUSEHOLDS, GUESTS } from '../data/mock'
-import { findHouseholdByCode, getHouseholdGuests } from '../utils'
+import { supabase } from '../lib/supabase'
+import type { Household, Guest } from '../types'
+
+type HouseholdWithGuests = Household & { guests: Guest[] }
 
 export default function InviteCode() {
   const { inviteCode = '' } = useParams()
-  const household = findHouseholdByCode(inviteCode, HOUSEHOLDS)
+  const [household, setHousehold] = useState<HouseholdWithGuests | null | undefined>(undefined)
+
+  useEffect(() => {
+    if (!inviteCode) { setHousehold(null); return }
+    supabase
+      .from('households')
+      .select('*, guests(*)')
+      .eq('invite_code', inviteCode.toUpperCase())
+      .maybeSingle()
+      .then(({ data }) => setHousehold((data as HouseholdWithGuests) ?? null))
+  }, [inviteCode])
+
+  if (household === undefined) return null
 
   if (!household) {
     return (
@@ -14,10 +29,10 @@ export default function InviteCode() {
           Invitation
         </p>
         <h1 className="text-2xl font-[300] tracking-[0.08em] text-zinc-900 dark:text-zinc-50 mb-4">
-          We couldn’t find your invitation
+          We couldn't find your invitation
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-10 leading-relaxed max-w-sm mx-auto">
-          The code <span className="font-medium text-zinc-700 dark:text-zinc-300">{inviteCode}</span> didn’t
+          The code <span className="font-medium text-zinc-700 dark:text-zinc-300">{inviteCode}</span> didn't
           match any invitation. You can look yourself up by name instead.
         </p>
         <Link
@@ -30,12 +45,12 @@ export default function InviteCode() {
     )
   }
 
-  const guests = getHouseholdGuests(household, GUESTS)
+  const guests = household.guests ?? []
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28 text-center">
       <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-600 mb-8">
-        You’re Invited
+        You're Invited
       </p>
       <h1
         className="text-4xl md:text-6xl text-zinc-900 dark:text-zinc-50 mb-6"
@@ -47,7 +62,7 @@ export default function InviteCode() {
         Welcome, {household.name}
       </p>
       <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-10">
-        {guests.map((g) => g.firstName).join(' & ')} — we would be honoured to
+        {guests.map((g) => g.first_name).join(' & ')} — we would be honoured to
         have you celebrate with us.
       </p>
       <Link

@@ -11,38 +11,41 @@ export type SitePhase =
 
 export interface Guest {
   id: string
-  firstName: string
-  lastName: string
+  household_id: string
+  first_name: string
+  last_name: string
   email?: string
   phone?: string
-  householdId: string
+  created_at?: string
 }
 
 export interface Household {
   id: string
-  name: string // e.g. "The Johnson Family"
-  inviteCode: string
-  guestIds: string[]
-  maxGuests: number
+  name: string
+  invite_code: string
+  max_guests: number
   notes?: string
+  created_at?: string
+  guests?: Guest[]
 }
 
 export interface MealChoice {
   id: string
   label: string
   description?: string
-  dietaryTags: string[] // e.g. ['vegetarian', 'gluten-free']
+  dietaryTags: string[]
 }
 
 export interface RSVPResponse {
-  householdId: string
-  guestId: string
+  id?: string
+  household_id: string
+  guest_id: string
   attending: boolean
-  mealChoiceId?: string
-  dietaryRestrictions?: string
-  songRequest?: string
+  meal_choice_id?: string
+  dietary_restrictions?: string
+  song_request?: string
   notes?: string
-  submittedAt: string
+  submitted_at?: string
 }
 
 export interface WeddingEvent {
@@ -79,22 +82,4 @@ export interface TravelRecommendation {
   note?: string
   priceRange?: string
   bookingCode?: string
-}
-
-export interface SongRequest {
-  householdId: string
-  guestName: string
-  song: string
-  artist?: string
-}
-
-export interface AdminStats {
-  totalInvited: number
-  rsvpReceived: number
-  attending: number
-  notAttending: number
-  pending: number
-  mealCounts: Record<string, number>
-  dietaryFlags: string[]
-  songRequests: SongRequest[]
 }

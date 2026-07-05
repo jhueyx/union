@@ -1,22 +1,6 @@
-// Union — mock data for the wedding platform.
-// Swap these constants for Supabase queries when the backend is wired up.
+// Union — static content data. Households/guests/RSVPs live in Supabase.
 
-import type {
-  Household,
-  Guest,
-  MealChoice,
-  FAQItem,
-  TravelRecommendation,
-  RegistryLink,
-  WeddingEvent,
-  RSVPResponse,
-} from '../types'
-
-// ── Households ──────────────────────────────────────────────
-export const HOUSEHOLDS: Household[] = []
-
-// ── Guests ──────────────────────────────────────────────────
-export const GUESTS: Guest[] = []
+import type { MealChoice, FAQItem, TravelRecommendation, RegistryLink, WeddingEvent } from '../types'
 
 // ── Meal choices ────────────────────────────────────────────
 export const MEAL_CHOICES: MealChoice[] = [
@@ -57,8 +41,6 @@ export const REGISTRY_LINKS: RegistryLink[] = [
 // ── Wedding events ──────────────────────────────────────────
 export const WEDDING_EVENTS: WeddingEvent[] = [
   { id: 'evt-1', name: 'Ceremony', time: '4:00 PM', endTime: '4:45 PM', location: 'The Garden Terrace', address: '500 Vineyard Rd, Placeholder City', description: 'Join us as we exchange vows beneath the magnolias.', dresscode: 'Black Tie Optional' },
-  { id: 'evt-2', name: 'Cocktail Hour', time: '5:00 PM', endTime: '6:00 PM', location: 'The Veranda', description: 'Signature cocktails, hors d’oeuvres, and live jazz.' },
+  { id: 'evt-2', name: 'Cocktail Hour', time: '5:00 PM', endTime: '6:00 PM', location: 'The Veranda', description: "Signature cocktails, hors d'oeuvres, and live jazz." },
   { id: 'evt-3', name: 'Reception', time: '6:00 PM', endTime: '11:00 PM', location: 'The Grand Ballroom', description: 'Dinner, dancing, and celebration into the night.' },
 ]
-
-export const RSVP_RESPONSES: RSVPResponse[] = []
