@@ -4,10 +4,10 @@ import { WEDDING } from '../../config'
 function DataPoint({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center">
-      <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 dark:text-zinc-600 mb-2">
+      <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-2">
         {label}
       </p>
-      <p className="text-lg font-[300] text-zinc-900 dark:text-zinc-50">
+      <p className="text-lg font-[300] text-zinc-900">
         {value || '—'}
       </p>
     </div>
@@ -27,13 +27,13 @@ export default function Details() {
 
       {venue.address && (
         <div className="mt-14 text-center space-y-2">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{venue.address}</p>
+          <p className="text-sm text-zinc-500">{venue.address}</p>
           {venue.mapsUrl && (
             <a
               href={venue.mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-xs tracking-[0.15em] uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors duration-150"
+              className="inline-block text-xs tracking-[0.15em] uppercase text-zinc-400 hover:text-zinc-900 transition-colors duration-150"
             >
               View Map ↗
             </a>

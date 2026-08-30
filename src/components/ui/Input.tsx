@@ -16,7 +16,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <div className={className}>
       <label
         htmlFor={inputId}
-        className="block text-[10px] tracking-[0.2em] uppercase text-zinc-400 dark:text-zinc-600 mb-2"
+        className="block text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-2"
       >
         {label}
       </label>
@@ -25,18 +25,18 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         id={inputId}
         className={[
           'w-full bg-transparent px-0 py-2',
-          'text-sm text-zinc-900 dark:text-zinc-50',
-          'placeholder-zinc-400 dark:placeholder-zinc-600',
+          'text-sm text-zinc-900',
+          'placeholder-zinc-400',
           'border-b',
           error
-            ? 'border-red-400 dark:border-red-500'
-            : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-500',
+            ?'border-red-400'
+            :'border-zinc-200 focus:border-zinc-400',
           'focus:outline-none transition-colors duration-200',
         ].join(' ')}
         {...rest}
       />
       {error && (
-        <p className="mt-2 text-xs text-red-500 dark:text-red-400 tracking-wide">
+        <p className="mt-2 text-xs text-red-500 tracking-wide">
           {error}
         </p>
       )}

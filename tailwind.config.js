@@ -1,7 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
-  darkMode: 'media',
+  // The site is light-only. It previously followed prefers-color-scheme, which
+  // meant a guest's phone in Light and a laptop in Dark showed two different
+  // sites, and the light half was never the one being designed against.
+  darkMode: false,
   theme: {
     extend: {
       fontFamily: {

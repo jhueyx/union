@@ -9,7 +9,7 @@ export default function Hero() {
     <div className="w-full max-w-[700px] mx-auto text-center">
 
       {/* ── Monogram ─────────────────────────────────────────── */}
-      <div className="mb-7 md:mb-8 text-zinc-900 dark:text-zinc-50">
+      <div className="mb-7 md:mb-8 text-zinc-900">
         <Monogram />
       </div>
 
@@ -18,7 +18,7 @@ export default function Hero() {
         className={[
           'font-[300] tracking-[0.12em]',
           'text-2xl md:text-4xl',
-          'text-zinc-900 dark:text-zinc-50',
+          'text-zinc-900',
           'mb-4',
         ].join(' ')}
       >
@@ -29,7 +29,7 @@ export default function Hero() {
       <p
         className={[
           'italic text-sm md:text-base tracking-wide',
-          'text-zinc-400 dark:text-zinc-500',
+          'text-zinc-400',
           isLive ? 'mb-10' : 'mb-12 md:mb-14',
         ].join(' ')}
       >
@@ -38,7 +38,7 @@ export default function Hero() {
 
       {/* ── Hairline divider ──────────────────────────────────── */}
       <div
-        className="w-10 h-px bg-zinc-200 dark:bg-zinc-800 mx-auto mb-12 md:mb-14"
+        className="w-10 h-px bg-zinc-200 mx-auto mb-12 md:mb-14"
         role="separator"
         aria-hidden="true"
       />
@@ -46,7 +46,7 @@ export default function Hero() {
       {isLive ? (
 
         /* ── Live mode: date + venue + scroll prompt ──────────── */
-        <div className="space-y-3 text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="space-y-3 text-sm text-zinc-500">
           {WEDDING.dateShort && (
             <p className="tracking-[0.15em]">{WEDDING.dateShort}</p>
           )}
@@ -54,11 +54,11 @@ export default function Hero() {
             <p className="tracking-wide">{WEDDING.venue.city}</p>
           )}
           {(!WEDDING.dateShort && !WEDDING.venue.city) && (
-            <p className="text-zinc-400 dark:text-zinc-600">Details coming soon.</p>
+            <p className="text-zinc-400">Details coming soon.</p>
           )}
           <a
             href="#details"
-            className="inline-block mt-8 text-xs tracking-[0.2em] uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors duration-150"
+            className="inline-block mt-8 text-xs tracking-[0.2em] uppercase text-zinc-400 hover:text-zinc-900 transition-colors duration-150"
           >
             View Details ↓
           </a>
@@ -72,7 +72,7 @@ export default function Hero() {
             className={[
               'space-y-5',
               'text-sm md:text-base leading-[1.85]',
-              'text-zinc-500 dark:text-zinc-400',
+              'text-zinc-500',
               'max-w-[520px] mx-auto',
               'mb-14 md:mb-16',
             ].join(' ')}
@@ -83,7 +83,7 @@ export default function Hero() {
           </div>
 
           <span
-            className="text-xs tracking-[0.25em] uppercase text-zinc-300 dark:text-zinc-700"
+            className="text-xs tracking-[0.25em] uppercase text-zinc-300"
             aria-label="Site coming soon"
           >
             Coming Soon

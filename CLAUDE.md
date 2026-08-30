@@ -22,7 +22,7 @@ export const SITE_MODE: SiteMode = 'coming-soon' // or 'live'
 ## Stack
 
 - **React 18 + Vite 5 + TypeScript** (strict mode)
-- **Tailwind CSS** — dark mode via `prefers-color-scheme` (system preference, not a toggle)
+- **Tailwind CSS** — light mode only (`darkMode: false`). There is no dark theme and no toggle.
 - **React Router v7** — `createBrowserRouter`, all routes in `src/routes/index.tsx`
 - **Supabase** — auth for `/admin`, guest list, RSVP responses
 - **Vercel** — hosting; auto-deploys on push to `main`
@@ -31,7 +31,7 @@ export const SITE_MODE: SiteMode = 'coming-soon' // or 'live'
 
 - Black, white, gray only. No color accents except status indicators in admin (emerald/rose/amber).
 - No floral graphics, no script fonts (except Great Vibes for the SJ monogram only), no gold gradients, no hearts, no wedding clichés.
-- Dark mode by default, light mode supported.
+- Light mode only. No dark theme, no toggle — the site looks the same on every device regardless of OS appearance.
 - All buttons: `rounded-[2px]` (nearly square corners).
 - Max content width: `700px` (admin: `900px`).
 - Section labels: `text-[10px] tracking-[0.3em] uppercase`.

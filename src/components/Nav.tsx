@@ -18,8 +18,8 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   [
     'text-xs tracking-[0.15em] uppercase transition-colors duration-150',
     isActive
-      ? 'text-zinc-900 dark:text-zinc-50'
-      : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50',
+      ?'text-zinc-900'
+      :'text-zinc-400 hover:text-zinc-900',
   ].join(' ')
 
 export default function Nav() {
@@ -29,12 +29,12 @@ export default function Nav() {
   if (SITE_MODE === 'coming-soon') return null
 
   return (
-    <header className="sticky top-0 z-50 bg-[#fafafa]/90 dark:bg-[#0a0a0a]/90 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-900">
+    <header className="sticky top-0 z-50 bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-100">
       <div className="max-w-[700px] mx-auto px-6 h-14 flex items-center justify-between">
         <Link
           to="/"
           onClick={() => setOpen(false)}
-          className="text-xs tracking-[0.2em] uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors duration-150"
+          className="text-xs tracking-[0.2em] uppercase text-zinc-500 hover:text-zinc-900 transition-colors duration-150"
         >
           {WEDDING.coupleNames}
         </Link>
@@ -58,7 +58,7 @@ export default function Nav() {
           aria-label={open ? 'Close menu' : 'Open menu'}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="md:hidden text-lg leading-none text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors duration-150"
+          className="md:hidden text-lg leading-none text-zinc-500 hover:text-zinc-900 transition-colors duration-150"
         >
           {open ? '✕' : '☰'}
         </button>
@@ -68,7 +68,7 @@ export default function Nav() {
       {open && (
         <nav
           aria-label="Mobile navigation"
-          className="md:hidden border-t border-zinc-100 dark:border-zinc-900 bg-[#fafafa] dark:bg-[#0a0a0a]"
+          className="md:hidden border-t border-zinc-100 bg-[#fafafa]"
         >
           <ul className="max-w-[700px] mx-auto px-6 py-4 flex flex-col gap-4">
             {LINKS.map(({ label, to }) => (

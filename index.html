@@ -12,8 +12,7 @@
     <title>Sally &amp; Jason</title>
     <meta name="description" content="A celebration, thoughtfully designed. Our wedding website is currently being prepared as we finalize the details." />
     <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#fafafa" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -41,15 +40,15 @@
       rel="stylesheet"
     />
 
-    <!-- Prevent background flash before CSS loads -->
+    <!-- Prevent background flash before CSS loads. The site is light-only, so
+         this is a single colour rather than a prefers-color-scheme switch.
+         color-scheme keeps native controls (inputs, scrollbars, date pickers)
+         light too — without it the browser draws them from the OS theme, so a
+         guest on a dark phone got dark form fields on a white page. -->
     <style>
       html {
-        background: #0a0a0a;
-      }
-      @media (prefers-color-scheme: light) {
-        html {
-          background: #fafafa;
-        }
+        background: #fafafa;
+        color-scheme: light;
       }
     </style>
   </head>

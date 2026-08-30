@@ -12,12 +12,12 @@ export default function Home() {
       </div>
 
       {isLive && (
-        <section className="border-t border-zinc-100 dark:border-zinc-900">
+        <section className="border-t border-zinc-100">
           <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28 text-center">
-            <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-600 mb-8">
+            <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8">
               Welcome
             </p>
-            <p className="text-sm md:text-base leading-relaxed text-zinc-500 dark:text-zinc-400 max-w-[520px] mx-auto">
+            <p className="text-sm md:text-base leading-relaxed text-zinc-500 max-w-[520px] mx-auto">
               We are so glad you are here. Explore the pages above to find our
               schedule, travel details, and everything you need to celebrate
               with us. When you are ready, we would love for you to RSVP.

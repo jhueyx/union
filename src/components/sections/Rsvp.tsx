@@ -17,13 +17,13 @@ export default function Rsvp() {
   return (
     <Section id="rsvp" label="RSVP">
       {WEDDING.rsvpDeadline && (
-        <p className="text-center text-sm text-zinc-400 dark:text-zinc-600 -mt-6 mb-12">
+        <p className="text-center text-sm text-zinc-400 -mt-6 mb-12">
           Kindly reply by {WEDDING.rsvpDeadline}.
         </p>
       )}
 
       {submitted ? (
-        <p className="text-center text-sm text-zinc-400 dark:text-zinc-500 leading-relaxed">
+        <p className="text-center text-sm text-zinc-400 leading-relaxed">
           Thank you. We look forward to celebrating with you.
         </p>
       ) : (
@@ -33,7 +33,7 @@ export default function Rsvp() {
           <div>
             <label
               htmlFor="rsvp-name"
-              className="block text-[10px] tracking-[0.2em] uppercase text-zinc-400 dark:text-zinc-600 mb-2"
+              className="block text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-2"
             >
               Name
             </label>
@@ -46,10 +46,10 @@ export default function Rsvp() {
               required
               className={[
                 'w-full bg-transparent px-0 py-2',
-                'border-b border-zinc-200 dark:border-zinc-800',
-                'text-sm text-zinc-900 dark:text-zinc-50',
-                'placeholder-zinc-400 dark:placeholder-zinc-600',
-                'focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500',
+                'border-b border-zinc-200',
+                'text-sm text-zinc-900',
+                'placeholder-zinc-400',
+                'focus:outline-none focus:border-zinc-400',
                 'transition-colors duration-200',
               ].join(' ')}
             />
@@ -57,7 +57,7 @@ export default function Rsvp() {
 
           {/* Attendance */}
           <div>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 dark:text-zinc-600 mb-4">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-4">
               Attendance
             </p>
             <div className="flex flex-col gap-3">
@@ -71,13 +71,13 @@ export default function Rsvp() {
                     className={[
                       'w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors duration-150',
                       attending === value
-                        ? 'border-zinc-900 dark:border-zinc-50'
-                        : 'border-zinc-300 dark:border-zinc-700 group-hover:border-zinc-500',
+                        ?'border-zinc-900'
+                        :'border-zinc-300 group-hover:border-zinc-500',
                     ].join(' ')}
                     aria-hidden="true"
                   >
                     {attending === value && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-900 dark:bg-zinc-50" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-900"/>
                     )}
                   </span>
                   <input
@@ -92,8 +92,8 @@ export default function Rsvp() {
                     className={[
                       'text-sm transition-colors duration-150',
                       attending === value
-                        ? 'text-zinc-900 dark:text-zinc-50'
-                        : 'text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-600 dark:group-hover:text-zinc-400',
+                        ?'text-zinc-900'
+                        :'text-zinc-400 group-hover:text-zinc-600',
                     ].join(' ')}
                   >
                     {label}
@@ -109,8 +109,8 @@ export default function Rsvp() {
             className={[
               'w-full py-3.5 rounded-[2px]',
               'text-xs font-medium tracking-[0.2em] uppercase',
-              'bg-zinc-900 dark:bg-zinc-50',
-              'text-zinc-50 dark:text-zinc-900',
+              'bg-zinc-900',
+              'text-zinc-50',
               'transition-all duration-200 ease-out',
               'hover:-translate-y-0.5 hover:shadow-md',
               'active:translate-y-0 active:shadow-none',

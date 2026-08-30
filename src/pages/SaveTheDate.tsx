@@ -51,30 +51,30 @@ export default function SaveTheDate() {
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28 text-center">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-600 mb-8">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8">
         Save the Date
       </p>
 
       <h1
-        className="text-5xl md:text-7xl text-zinc-900 dark:text-zinc-50 mb-6"
+        className="text-5xl md:text-7xl text-zinc-900 mb-6"
         style={{ fontFamily: "'Great Vibes', cursive", lineHeight: 1.1 }}
       >
         Sally &amp; Jason
       </h1>
 
-      <p className="text-lg font-[300] tracking-[0.08em] text-zinc-900 dark:text-zinc-50 mb-2">
+      <p className="text-lg font-[300] tracking-[0.08em] text-zinc-900 mb-2">
         {WEDDING.date || 'Date to be announced'}
       </p>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-14">
+      <p className="text-sm text-zinc-500 mb-14">
         {WEDDING.venue.city || 'Location to be announced'}
       </p>
 
       {/* Engagement photo placeholder */}
       <div
-        className="mx-auto mb-14 max-w-[420px] aspect-[4/3] rounded-[2px] border border-zinc-200 dark:border-zinc-800 flex items-center justify-center"
+        className="mx-auto mb-14 max-w-[420px] aspect-[4/3] rounded-[2px] border border-zinc-200 flex items-center justify-center"
         aria-hidden="true"
       >
-        <span className="text-[10px] tracking-[0.3em] uppercase text-zinc-300 dark:text-zinc-700">
+        <span className="text-[10px] tracking-[0.3em] uppercase text-zinc-300">
           Photo Coming Soon
         </span>
       </div>
@@ -83,7 +83,7 @@ export default function SaveTheDate() {
         <CountdownTimer targetDate={WEDDING_DATE} />
       </div>
 
-      <p className="italic text-sm text-zinc-400 dark:text-zinc-500 mb-12">
+      <p className="italic text-sm text-zinc-400 mb-12">
         Formal invitation to follow.
       </p>
 
@@ -99,7 +99,7 @@ export default function SaveTheDate() {
       </div>
 
       {shareMsg && (
-        <p className="mt-5 text-xs text-zinc-400 dark:text-zinc-600 tracking-wide">
+        <p className="mt-5 text-xs text-zinc-400 tracking-wide">
           {shareMsg}
         </p>
       )}

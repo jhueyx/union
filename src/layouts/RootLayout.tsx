@@ -5,7 +5,7 @@ import Footer from '../components/Footer'
 
 export default function RootLayout() {
   return (
-    <div className="animate-page-enter min-h-screen flex flex-col bg-[#fafafa] dark:bg-[#0a0a0a] text-zinc-900 dark:text-zinc-50">
+    <div className="animate-page-enter min-h-screen flex flex-col bg-[#fafafa] text-zinc-900">
       <Nav />
       <main className="flex-1">
         <Outlet />

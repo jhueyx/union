@@ -25,7 +25,7 @@ export default function NotifyForm({ onDismiss }: Props) {
   if (status === 'submitted') {
     return (
       <div className="animate-fade-in mt-10 text-center">
-        <p className="text-sm text-zinc-400 dark:text-zinc-500 tracking-wide">
+        <p className="text-sm text-zinc-400 tracking-wide">
           We'll be in touch.
         </p>
       </div>
@@ -49,10 +49,10 @@ export default function NotifyForm({ onDismiss }: Props) {
               className={[
                 'w-full bg-transparent',
                 'px-0 py-2.5',
-                'text-sm text-zinc-900 dark:text-zinc-50',
-                'placeholder-zinc-400 dark:placeholder-zinc-600',
-                'border-b border-zinc-200 dark:border-zinc-800',
-                'focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500',
+                'text-sm text-zinc-900',
+                'placeholder-zinc-400',
+                'border-b border-zinc-200',
+                'focus:outline-none focus:border-zinc-400',
                 'transition-colors duration-200',
                 'text-center tracking-wide',
               ].join(' ')}
@@ -65,22 +65,22 @@ export default function NotifyForm({ onDismiss }: Props) {
               type="submit"
               className={[
                 'text-xs uppercase tracking-[0.18em] font-medium',
-                'text-zinc-900 dark:text-zinc-50',
-                'hover:text-black dark:hover:text-white',
+                'text-zinc-900',
+                'hover:text-black',
                 'transition-colors duration-150',
                 'py-1',
               ].join(' ')}
             >
               Send
             </button>
-            <span className="w-px h-3 bg-zinc-200 dark:bg-zinc-700" aria-hidden="true" />
+            <span className="w-px h-3 bg-zinc-200"aria-hidden="true"/>
             <button
               type="button"
               onClick={onDismiss}
               className={[
                 'text-xs uppercase tracking-[0.18em]',
-                'text-zinc-400 dark:text-zinc-600',
-                'hover:text-zinc-600 dark:hover:text-zinc-400',
+                'text-zinc-400',
+                'hover:text-zinc-600',
                 'transition-colors duration-150',
                 'py-1',
               ].join(' ')}
