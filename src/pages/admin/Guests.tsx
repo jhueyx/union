@@ -59,8 +59,21 @@ export default function Guests() {
       if (r?.attending === true) attending++
       else if (r?.attending === false) declined++
     }
-    return { invited: guests.length, attending, declined, pending: guests.length - attending - declined }
-  }, [guests, rsvpByGuest])
+    // Seats allotted is the sum of each household's max_guests — the number you
+    // have actually committed to, which runs ahead of named guests while the
+    // list is being built ("the Chens, plus one" is 2 seats but 1 name so far).
+    // It is the figure to check against venue capacity, not the guest count.
+    const allotted = households.reduce((n, h) => n + (h.max_guests || 0), 0)
+    return {
+      households: households.length,
+      allotted,
+      named: guests.length,
+      unnamed: Math.max(0, allotted - guests.length),
+      attending,
+      declined,
+      pending: guests.length - attending - declined,
+    }
+  }, [guests, rsvpByGuest, households])
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -87,6 +100,14 @@ export default function Guests() {
     const row = await insertRow<Household>('households',
       { name, invite_code: null, max_guests: 2 }, 'add household')
     if (row) { setNewHousehold(''); load() }
+  }
+
+  async function renameHousehold(h: Household, raw: string) {
+    const name = raw.trim()
+    // An empty name would make the row unidentifiable; treat it as a no-op and
+    // let load() put the previous value back in the field.
+    if (!name || name === h.name) { if (!name) load(); return }
+    if (await updateRow('households', h.id, { name }, 'rename household')) load()
   }
 
   /** Mint a code when the invitation is actually going out. */
@@ -129,12 +150,21 @@ export default function Guests() {
     <div className="max-w-[1200px] mx-auto px-6 py-12">
       <PageHeader title="Guests" />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-        <Stat label="Invited" value={stats.invited} />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+        <Stat label="Households" value={stats.households} />
+        <Stat label="Seats allotted" value={stats.allotted} />
+        <Stat label="Named" value={stats.named} />
         <Stat label="Attending" value={stats.attending} accent="text-emerald-400" />
         <Stat label="Declined" value={stats.declined} accent="text-rose-400" />
         <Stat label="Pending" value={stats.pending} accent="text-amber-400" />
       </div>
+
+      {stats.unnamed > 0 && (
+        <p className="text-[10px] tracking-[0.15em] uppercase text-zinc-500 mb-10">
+          {stats.unnamed} allotted {stats.unnamed === 1 ? 'seat has' : 'seats have'} no name yet
+        </p>
+      )}
+      {stats.unnamed === 0 && <div className="mb-10" />}
 
       <div className="flex flex-wrap gap-3 mb-4">
         <TextInput
@@ -184,7 +214,22 @@ export default function Guests() {
               <Panel key={h.id}>
                 <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">
                   <div>
-                    <p className="text-sm text-zinc-50">{h.name}</p>
+                    {/* Click-to-edit rather than a separate edit mode: the name is
+                        the field most likely to need a fix (a typo, a surname
+                        added later), and a mode toggle for one input is friction. */}
+                    <input
+                      defaultValue={h.name}
+                      onBlur={e => renameHousehold(h, e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                        if (e.key === 'Escape') {
+                          (e.target as HTMLInputElement).value = h.name
+                          ;(e.target as HTMLInputElement).blur()
+                        }
+                      }}
+                      aria-label="Household name"
+                      className="text-sm text-zinc-50 bg-transparent border border-transparent rounded-[2px] -mx-2 px-2 py-0.5 w-full max-w-[320px] hover:border-zinc-800 focus:border-zinc-600 focus:outline-none transition-colors"
+                    />
                     <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mt-1">
                       {h.invite_code
                         ? <>Code {h.invite_code}</>
