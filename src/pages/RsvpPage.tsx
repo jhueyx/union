@@ -143,7 +143,7 @@ export default function RsvpPage() {
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8 text-center">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8 text-center">
         RSVP
       </p>
 
@@ -201,7 +201,7 @@ export default function RsvpPage() {
                         'text-[10px] tracking-[0.15em] uppercase px-4 py-2 rounded-[2px] border transition-colors duration-150',
                         gs.attending === v
                           ?'border-zinc-900 text-zinc-900'
-                          :'border-zinc-200 text-zinc-400 hover:border-zinc-400',
+                          :'border-zinc-200 text-zinc-600 hover:border-zinc-400',
                       ].join(' ')}
                     >
                       {label}
@@ -234,7 +234,7 @@ export default function RsvpPage() {
                 <p className="text-sm font-medium text-zinc-900 mb-4">
                   {gs.guest.first_name} {gs.guest.last_name}
                 </p>
-                <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-3">
+                <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-3">
                   Meal Selection
                 </p>
                 <div className="space-y-2 mb-5">
@@ -263,7 +263,7 @@ export default function RsvpPage() {
                       <span className="text-sm text-zinc-700">
                         {meal.label}
                         {meal.description && (
-                          <span className="block text-xs text-zinc-400">
+                          <span className="block text-xs text-zinc-600">
                             {meal.description}
                           </span>
                         )}
@@ -288,7 +288,7 @@ export default function RsvpPage() {
             />
 
             <div>
-              <label className="block text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-2">
+              <label className="block text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-2">
                 Notes to the Couple
               </label>
               <textarea
@@ -296,7 +296,7 @@ export default function RsvpPage() {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Anything you'd like us to know (optional)"
-                className="w-full bg-transparent px-0 py-2 text-sm text-zinc-900 placeholder-zinc-400 border-b border-zinc-200 focus:outline-none focus:border-zinc-400 transition-colors duration-200 resize-none"
+                className="w-full bg-transparent px-0 py-2 text-sm text-zinc-900 placeholder-zinc-600 border-b border-zinc-200 focus:outline-none focus:border-zinc-400 transition-colors duration-200 resize-none"
               />
             </div>
           </div>
@@ -325,7 +325,7 @@ export default function RsvpPage() {
           </p>
 
           <div className="text-left border-t border-zinc-100 pt-8 space-y-3">
-            <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-4">
+            <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-4">
               Your Responses
             </p>
             {guestStates.map((gs) => {
@@ -342,7 +342,7 @@ export default function RsvpPage() {
               )
             })}
             {songRequest && (
-              <p className="text-xs text-zinc-400 pt-2">
+              <p className="text-xs text-zinc-600 pt-2">
                 Song request: {songRequest}
               </p>
             )}

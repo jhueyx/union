@@ -7,7 +7,7 @@ export default function Travel() {
   return (
     <Section id="travel" label="Travel">
       {hotels.length === 0 ? (
-        <p className="text-center text-sm text-zinc-400">
+        <p className="text-center text-sm text-zinc-600">
           Hotel block details coming soon.
         </p>
       ) : (
@@ -24,7 +24,7 @@ export default function Travel() {
                 {hotel.address}
               </p>
               {hotel.note && (
-                <p className="text-xs text-zinc-400 mb-4">
+                <p className="text-xs text-zinc-600 mb-4">
                   {hotel.note}
                 </p>
               )}
@@ -33,7 +33,7 @@ export default function Travel() {
                   href={hotel.bookingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs tracking-[0.15em] uppercase text-zinc-400 hover:text-zinc-900 transition-colors duration-150"
+                  className="text-xs tracking-[0.15em] uppercase text-zinc-600 hover:text-zinc-900 transition-colors duration-150"
                 >
                   Book Now ↗
                 </a>

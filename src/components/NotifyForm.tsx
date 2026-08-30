@@ -25,7 +25,7 @@ export default function NotifyForm({ onDismiss }: Props) {
   if (status === 'submitted') {
     return (
       <div className="animate-fade-in mt-10 text-center">
-        <p className="text-sm text-zinc-400 tracking-wide">
+        <p className="text-sm text-zinc-600 tracking-wide">
           We'll be in touch.
         </p>
       </div>
@@ -50,7 +50,7 @@ export default function NotifyForm({ onDismiss }: Props) {
                 'w-full bg-transparent',
                 'px-0 py-2.5',
                 'text-sm text-zinc-900',
-                'placeholder-zinc-400',
+                'placeholder-zinc-600',
                 'border-b border-zinc-200',
                 'focus:outline-none focus:border-zinc-400',
                 'transition-colors duration-200',
@@ -79,7 +79,7 @@ export default function NotifyForm({ onDismiss }: Props) {
               onClick={onDismiss}
               className={[
                 'text-xs uppercase tracking-[0.18em]',
-                'text-zinc-400',
+                'text-zinc-600',
                 'hover:text-zinc-600',
                 'transition-colors duration-150',
                 'py-1',

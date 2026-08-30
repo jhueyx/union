@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 export default function NotFound() {
   return (
     <div className="max-w-[700px] mx-auto px-6 py-32 text-center min-h-[70vh] flex flex-col items-center justify-center">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8">
         404
       </p>
       <h1 className="text-2xl font-[300] tracking-[0.08em] text-zinc-900 mb-4">

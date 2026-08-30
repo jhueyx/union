@@ -32,7 +32,7 @@ export default function GuestbookPage() {
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8 text-center">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8 text-center">
         Guestbook
       </p>
       <h1 className="text-2xl font-[300] tracking-[0.08em] text-zinc-900 mb-10 text-center">
@@ -47,7 +47,7 @@ export default function GuestbookPage() {
           onChange={(e) => setName(e.target.value)}
         />
         <div>
-          <label className="block text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-2">
+          <label className="block text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-2">
             Your Message
           </label>
           <textarea
@@ -55,14 +55,14 @@ export default function GuestbookPage() {
             onChange={(e) => setMessage(e.target.value)}
             rows={3}
             placeholder="Share a wish or a memory"
-            className="w-full bg-transparent px-0 py-2 text-sm text-zinc-900 placeholder-zinc-400 border-b border-zinc-200 focus:outline-none focus:border-zinc-400 transition-colors resize-none"
+            className="w-full bg-transparent px-0 py-2 text-sm text-zinc-900 placeholder-zinc-600 border-b border-zinc-200 focus:outline-none focus:border-zinc-400 transition-colors resize-none"
           />
         </div>
         <Button type="submit" variant="primary" size="md" className="w-full">
           Sign the Guestbook
         </Button>
         {submitted && (
-          <p className="text-xs text-zinc-400 text-center tracking-wide">
+          <p className="text-xs text-zinc-600 text-center tracking-wide">
             Thank you for your note.
           </p>
         )}
@@ -74,7 +74,7 @@ export default function GuestbookPage() {
             <p className="text-sm text-zinc-700 leading-relaxed italic">
               “{entry.message}”
             </p>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mt-3">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mt-3">
               — {entry.name}
             </p>
           </div>

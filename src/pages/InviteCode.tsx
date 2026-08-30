@@ -25,7 +25,7 @@ export default function InviteCode() {
   if (!household) {
     return (
       <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28 text-center">
-        <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8">
+        <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8">
           Invitation
         </p>
         <h1 className="text-2xl font-[300] tracking-[0.08em] text-zinc-900 mb-4">
@@ -49,7 +49,7 @@ export default function InviteCode() {
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28 text-center">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8">
         You're Invited
       </p>
       <h1

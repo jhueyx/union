@@ -14,7 +14,7 @@ export default function Home() {
       {isLive && (
         <section className="border-t border-zinc-100">
           <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28 text-center">
-            <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8">
+            <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8">
               Welcome
             </p>
             <p className="text-sm md:text-base leading-relaxed text-zinc-500 max-w-[520px] mx-auto">

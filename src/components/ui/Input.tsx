@@ -16,7 +16,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <div className={className}>
       <label
         htmlFor={inputId}
-        className="block text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-2"
+        className="block text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-2"
       >
         {label}
       </label>
@@ -26,7 +26,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         className={[
           'w-full bg-transparent px-0 py-2',
           'text-sm text-zinc-900',
-          'placeholder-zinc-400',
+          'placeholder-zinc-600',
           'border-b',
           error
             ?'border-red-400'

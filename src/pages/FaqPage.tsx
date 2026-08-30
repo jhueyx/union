@@ -17,19 +17,19 @@ export default function FaqPage() {
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-12 text-center">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-12 text-center">
         Frequently Asked
       </p>
 
       <div className="max-w-lg mx-auto space-y-12">
         {FAQ_ITEMS.length === 0 && (
-          <p className="text-sm text-zinc-400 text-center">
+          <p className="text-sm text-zinc-600 text-center">
             Details coming soon.
           </p>
         )}
         {Object.entries(groups).map(([category, items]) => (
           <div key={category}>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-4">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-4">
               {category}
             </p>
             <div className="divide-y divide-zinc-100 border-t border-b border-zinc-100">
@@ -46,7 +46,7 @@ export default function FaqPage() {
                       <span className="text-sm text-zinc-900">
                         {item.question}
                       </span>
-                      <span className="text-zinc-400 shrink-0">
+                      <span className="text-zinc-600 shrink-0">
                         {isOpen ? '−' : '+'}
                       </span>
                     </button>

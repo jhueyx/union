@@ -12,7 +12,7 @@ function Unit({ value, label }: { value: number; label: string }) {
       <span className="text-3xl md:text-5xl font-[300] tabular-nums text-zinc-900">
         {String(value).padStart(2, '0')}
       </span>
-      <span className="mt-2 text-[10px] tracking-[0.3em] uppercase text-zinc-400">
+      <span className="mt-2 text-[10px] tracking-[0.3em] uppercase text-zinc-600">
         {label}
       </span>
     </div>
@@ -32,7 +32,7 @@ export default function CountdownTimer({ targetDate }: Props) {
 
   if (!remaining) {
     return (
-      <p className="text-sm text-zinc-400 tracking-wide">
+      <p className="text-sm text-zinc-600 tracking-wide">
         The countdown will begin once our date is set.
       </p>
     )

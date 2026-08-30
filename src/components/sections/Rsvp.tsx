@@ -17,13 +17,13 @@ export default function Rsvp() {
   return (
     <Section id="rsvp" label="RSVP">
       {WEDDING.rsvpDeadline && (
-        <p className="text-center text-sm text-zinc-400 -mt-6 mb-12">
+        <p className="text-center text-sm text-zinc-600 -mt-6 mb-12">
           Kindly reply by {WEDDING.rsvpDeadline}.
         </p>
       )}
 
       {submitted ? (
-        <p className="text-center text-sm text-zinc-400 leading-relaxed">
+        <p className="text-center text-sm text-zinc-600 leading-relaxed">
           Thank you. We look forward to celebrating with you.
         </p>
       ) : (
@@ -33,7 +33,7 @@ export default function Rsvp() {
           <div>
             <label
               htmlFor="rsvp-name"
-              className="block text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-2"
+              className="block text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-2"
             >
               Name
             </label>
@@ -48,7 +48,7 @@ export default function Rsvp() {
                 'w-full bg-transparent px-0 py-2',
                 'border-b border-zinc-200',
                 'text-sm text-zinc-900',
-                'placeholder-zinc-400',
+                'placeholder-zinc-600',
                 'focus:outline-none focus:border-zinc-400',
                 'transition-colors duration-200',
               ].join(' ')}
@@ -57,7 +57,7 @@ export default function Rsvp() {
 
           {/* Attendance */}
           <div>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-4">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-4">
               Attendance
             </p>
             <div className="flex flex-col gap-3">
@@ -93,7 +93,7 @@ export default function Rsvp() {
                       'text-sm transition-colors duration-150',
                       attending === value
                         ?'text-zinc-900'
-                        :'text-zinc-400 group-hover:text-zinc-600',
+                        :'text-zinc-600 group-hover:text-zinc-600',
                     ].join(' ')}
                   >
                     {label}

@@ -4,7 +4,7 @@ import { WEDDING } from '../../config'
 function DataPoint({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center">
-      <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-2">
+      <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-2">
         {label}
       </p>
       <p className="text-lg font-[300] text-zinc-900">
@@ -33,7 +33,7 @@ export default function Details() {
               href={venue.mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-xs tracking-[0.15em] uppercase text-zinc-400 hover:text-zinc-900 transition-colors duration-150"
+              className="inline-block text-xs tracking-[0.15em] uppercase text-zinc-600 hover:text-zinc-900 transition-colors duration-150"
             >
               View Map ↗
             </a>

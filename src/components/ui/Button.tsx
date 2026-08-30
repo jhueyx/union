@@ -31,7 +31,7 @@ const VARIANTS: Record<Variant, string> = {
   secondary:
     'border border-zinc-200 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900',
   ghost:
-    'text-zinc-400 hover:text-zinc-900',
+    'text-zinc-600 hover:text-zinc-900',
 }
 
 export default function Button({

@@ -7,17 +7,17 @@ export default function TravelPage() {
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-12 text-center">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-12 text-center">
         Travel & Stay
       </p>
 
       <div className="max-w-md mx-auto">
-        <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-6">
+        <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-6">
           Where to Stay
         </p>
         <div className="space-y-4 mb-16">
           {hotels.length === 0 && (
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-zinc-600">
               Hotel recommendations coming soon.
             </p>
           )}
@@ -31,7 +31,7 @@ export default function TravelPage() {
                   {h.name}
                 </p>
                 {h.priceRange && (
-                  <span className="text-[10px] tracking-[0.15em] text-zinc-400">
+                  <span className="text-[10px] tracking-[0.15em] text-zinc-600">
                     {h.priceRange}
                   </span>
                 )}
@@ -42,7 +42,7 @@ export default function TravelPage() {
                 </p>
               )}
               {h.note && (
-                <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                <p className="text-xs text-zinc-600 mt-2 leading-relaxed">
                   {h.note}
                 </p>
               )}
@@ -59,7 +59,7 @@ export default function TravelPage() {
                   href={h.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block mt-3 text-[10px] tracking-[0.15em] uppercase text-zinc-400 hover:text-zinc-900 transition-colors"
+                  className="inline-block mt-3 text-[10px] tracking-[0.15em] uppercase text-zinc-600 hover:text-zinc-900 transition-colors"
                 >
                   Book Now ↗
                 </a>
@@ -68,12 +68,12 @@ export default function TravelPage() {
           ))}
         </div>
 
-        <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-6">
+        <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-6">
           Getting Here
         </p>
         <div className="space-y-6">
           {transport.length === 0 && (
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-zinc-600">
               Transport details coming soon.
             </p>
           )}
@@ -82,13 +82,13 @@ export default function TravelPage() {
               <p className="text-sm font-medium text-zinc-900">
                 {t.name}
                 {t.priceRange && (
-                  <span className="ml-2 text-[10px] tracking-[0.15em] text-zinc-400">
+                  <span className="ml-2 text-[10px] tracking-[0.15em] text-zinc-600">
                     {t.priceRange}
                   </span>
                 )}
               </p>
               {t.note && (
-                <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                <p className="text-xs text-zinc-600 mt-2 leading-relaxed">
                   {t.note}
                 </p>
               )}

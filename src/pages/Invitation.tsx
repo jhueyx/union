@@ -13,7 +13,7 @@ const SECONDARY_BTN =
 export default function Invitation() {
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28 text-center">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8">
         Invitation
       </p>
 
@@ -33,33 +33,33 @@ export default function Invitation() {
 
       <dl className="space-y-6 mb-14">
         <div>
-          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-1">Date</dt>
+          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Date</dt>
           <dd className="text-lg font-[300] text-zinc-900">{WEDDING.date || EM}</dd>
         </div>
         <div>
-          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-1">Time</dt>
+          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Time</dt>
           <dd className="text-lg font-[300] text-zinc-900">{WEDDING.time || EM}</dd>
         </div>
         <div>
-          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-1">Venue</dt>
+          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Venue</dt>
           <dd className="text-lg font-[300] text-zinc-900">{WEDDING.venue.name || EM}</dd>
           {WEDDING.venue.city && (
             <dd className="text-sm text-zinc-500 mt-1">{WEDDING.venue.city}</dd>
           )}
         </div>
         <div>
-          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-1">Dress Code</dt>
+          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Dress Code</dt>
           <dd className="text-lg font-[300] text-zinc-900">{WEDDING.dressCode ||'Black Tie Optional'}</dd>
         </div>
         <div>
-          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-400 mb-1">Kindly Reply By</dt>
+          <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Kindly Reply By</dt>
           <dd className="text-lg font-[300] text-zinc-900">{WEDDING.rsvpDeadline || EM}</dd>
         </div>
       </dl>
 
       {/* Event flow preview */}
       <div className="mb-14">
-        <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-6">
+        <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-6">
           The Celebration
         </p>
         <p className="text-sm text-zinc-500 tracking-wide">

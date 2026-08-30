@@ -4,7 +4,7 @@ import { REGISTRY_LINKS } from '../data/mock'
 export default function RegistryPage() {
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8 text-center">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8 text-center">
         Registry
       </p>
 
@@ -15,7 +15,7 @@ export default function RegistryPage() {
 
       <div className="max-w-md mx-auto space-y-4">
         {REGISTRY_LINKS.length === 0 && (
-          <p className="text-sm text-zinc-400 text-center">
+          <p className="text-sm text-zinc-600 text-center">
             Registry details coming soon.
           </p>
         )}
@@ -31,12 +31,12 @@ export default function RegistryPage() {
               <span className="text-base font-[300] tracking-[0.06em] text-zinc-900">
                 {r.store}
               </span>
-              <span className="text-xs text-zinc-400 group-hover:text-zinc-900 transition-colors">
+              <span className="text-xs text-zinc-600 group-hover:text-zinc-900 transition-colors">
                 ↗
               </span>
             </div>
             {r.note && (
-              <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+              <p className="text-xs text-zinc-600 mt-2 leading-relaxed">
                 {r.note}
               </p>
             )}

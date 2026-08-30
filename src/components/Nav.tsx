@@ -19,7 +19,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
     'text-xs tracking-[0.15em] uppercase transition-colors duration-150',
     isActive
       ?'text-zinc-900'
-      :'text-zinc-400 hover:text-zinc-900',
+      :'text-zinc-600 hover:text-zinc-900',
   ].join(' ')
 
 export default function Nav() {

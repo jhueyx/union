@@ -7,14 +7,14 @@ export default function Schedule() {
   return (
     <Section id="schedule" label="Schedule">
       {schedule.length === 0 ? (
-        <p className="text-center text-sm text-zinc-400">
+        <p className="text-center text-sm text-zinc-600">
           Details coming soon.
         </p>
       ) : (
         <dl className="max-w-xs mx-auto space-y-7">
           {schedule.map(({ time, event, note }) => (
             <div key={`${time}-${event}`} className="flex items-start gap-8">
-              <dt className="w-16 shrink-0 text-xs tracking-[0.08em] tabular-nums text-zinc-400 pt-0.5">
+              <dt className="w-16 shrink-0 text-xs tracking-[0.08em] tabular-nums text-zinc-600 pt-0.5">
                 {time}
               </dt>
               <dd>
@@ -22,7 +22,7 @@ export default function Schedule() {
                   {event}
                 </p>
                 {note && (
-                  <p className="mt-1 text-xs text-zinc-400">{note}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{note}</p>
                 )}
               </dd>
             </div>

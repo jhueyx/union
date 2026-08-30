@@ -2,7 +2,7 @@
 export default function StoryPage() {
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
-      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-8 text-center">
+      <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8 text-center">
         Our Story
       </p>
 
@@ -12,7 +12,7 @@ export default function StoryPage() {
 
       {/* Photo placeholder */}
       <div className="w-full aspect-[3/2] bg-zinc-100 border border-zinc-200 rounded-[2px] mb-16 flex items-center justify-center">
-        <p className="text-xs tracking-[0.2em] uppercase text-zinc-400">
+        <p className="text-xs tracking-[0.2em] uppercase text-zinc-600">
           Photo
         </p>
       </div>
@@ -21,7 +21,7 @@ export default function StoryPage() {
       <div className="space-y-12 text-sm md:text-base leading-[1.9] text-zinc-600 max-w-[560px] mx-auto">
 
         <div>
-          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-4">
+          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-4">
             How We Met
           </p>
           <p>
@@ -30,7 +30,7 @@ export default function StoryPage() {
         </div>
 
         <div>
-          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-4">
+          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-4">
             The Relationship
           </p>
           <p>
@@ -39,7 +39,7 @@ export default function StoryPage() {
         </div>
 
         <div>
-          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-400 mb-4">
+          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-4">
             The Proposal
           </p>
           <p>

@@ -10,7 +10,7 @@ export default function Footer() {
         className={[
           'text-center',
           'text-xs tracking-[0.2em]',
-          'text-zinc-300',
+          'text-zinc-600',
         ].join(' ')}
       >
         © {year} Sally &amp; Jason

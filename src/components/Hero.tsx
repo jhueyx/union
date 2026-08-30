@@ -29,7 +29,7 @@ export default function Hero() {
       <p
         className={[
           'italic text-sm md:text-base tracking-wide',
-          'text-zinc-400',
+          'text-zinc-600',
           isLive ? 'mb-10' : 'mb-12 md:mb-14',
         ].join(' ')}
       >
@@ -54,11 +54,11 @@ export default function Hero() {
             <p className="tracking-wide">{WEDDING.venue.city}</p>
           )}
           {(!WEDDING.dateShort && !WEDDING.venue.city) && (
-            <p className="text-zinc-400">Details coming soon.</p>
+            <p className="text-zinc-600">Details coming soon.</p>
           )}
           <a
             href="#details"
-            className="inline-block mt-8 text-xs tracking-[0.2em] uppercase text-zinc-400 hover:text-zinc-900 transition-colors duration-150"
+            className="inline-block mt-8 text-xs tracking-[0.2em] uppercase text-zinc-600 hover:text-zinc-900 transition-colors duration-150"
           >
             View Details ↓
           </a>
@@ -83,7 +83,7 @@ export default function Hero() {
           </div>
 
           <span
-            className="text-xs tracking-[0.25em] uppercase text-zinc-300"
+            className="text-xs tracking-[0.25em] uppercase text-zinc-600"
             aria-label="Site coming soon"
           >
             Coming Soon

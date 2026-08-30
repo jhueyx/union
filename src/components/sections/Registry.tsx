@@ -12,7 +12,7 @@ export default function Registry() {
       </p>
 
       {registry.length === 0 ? (
-        <p className="text-center text-sm text-zinc-400">
+        <p className="text-center text-sm text-zinc-600">
           Registry details coming soon.
         </p>
       ) : (
