@@ -16,6 +16,12 @@ import GuestbookPage from '../pages/GuestbookPage'
 import StoryPage from '../pages/StoryPage'
 import NotFound from '../pages/NotFound'
 import Dashboard from '../pages/admin/Dashboard'
+import Guests from '../pages/admin/Guests'
+import Seating from '../pages/admin/Seating'
+import Checklist from '../pages/admin/Checklist'
+import Timeline from '../pages/admin/Timeline'
+import Budget from '../pages/admin/Budget'
+import Vendors from '../pages/admin/Vendors'
 
 export const router = createBrowserRouter([
   {
@@ -40,6 +46,14 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: <AdminLayout />,
-    children: [{ index: true, element: <Dashboard /> }],
+    children: [
+      { index: true, element: <Dashboard /> },
+      { path: 'guests', element: <Guests /> },
+      { path: 'seating', element: <Seating /> },
+      { path: 'checklist', element: <Checklist /> },
+      { path: 'timeline', element: <Timeline /> },
+      { path: 'budget', element: <Budget /> },
+      { path: 'vendors', element: <Vendors /> },
+    ],
   },
 ])
