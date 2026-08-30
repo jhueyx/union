@@ -1,7 +1,7 @@
 // Guest list — households, their guests, and RSVP state in one place.
 import { useEffect, useMemo, useState } from 'react'
 import {
-  fetchAll, insertRow, updateRow, deleteRow,
+  fetchAll, insertRow, updateRow, deleteRow, generateInviteCode,
   type Guest, type Household, type RsvpResponse,
 } from '../../lib/planning'
 import { PageHeader, Panel, TextInput, Btn, Empty, Stat } from '../../components/admin/AdminUI'
@@ -16,6 +16,7 @@ export default function Guests() {
   const [search, setSearch] = useState('')
   const [newHousehold, setNewHousehold] = useState('')
   const [addingTo, setAddingTo] = useState<string | null>(null)
+  const [view, setView] = useState<'all' | 'draft' | 'invited'>('all')
   const [newGuest, setNewGuest] = useState('')
 
   async function load() {
@@ -45,6 +46,12 @@ export default function Guests() {
     return m
   }, [guests])
 
+  const counts = useMemo(() => ({
+    all: households.length,
+    draft: households.filter(h => !h.invite_code).length,
+    invited: households.filter(h => h.invite_code).length,
+  }), [households])
+
   const stats = useMemo(() => {
     let attending = 0, declined = 0
     for (const g of guests) {
@@ -57,35 +64,55 @@ export default function Guests() {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return households
-    return households.filter(h => {
-      if (h.name.toLowerCase().includes(q) || h.invite_code.toLowerCase().includes(q)) return true
+    const scoped = view === 'all' ? households
+      : view === 'draft' ? households.filter(h => !h.invite_code)
+      : households.filter(h => h.invite_code)
+    if (!q) return scoped
+    return scoped.filter(h => {
+      if (h.name.toLowerCase().includes(q)) return true
+      if (h.invite_code?.toLowerCase().includes(q)) return true
       return (guestsByHousehold.get(h.id) ?? []).some(g =>
         `${g.first_name} ${g.last_name}`.toLowerCase().includes(q))
     })
-  }, [households, search, guestsByHousehold])
+  }, [households, search, guestsByHousehold, view])
 
+  /**
+   * New households start with no invite code. Building the list is a different
+   * act from deciding to invite someone, and a code implies the second.
+   */
   async function addHousehold(e: React.FormEvent) {
     e.preventDefault()
     const name = newHousehold.trim()
     if (!name) return
-    // A short, unambiguous code: no O/0/I/1 so it can be read aloud or typed
-    // off a printed invitation without confusion.
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-    const code = Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('')
-    const row = await insertRow<Household>('households', { name, invite_code: code, max_guests: 2 }, 'add household')
+    const row = await insertRow<Household>('households',
+      { name, invite_code: null, max_guests: 2 }, 'add household')
     if (row) { setNewHousehold(''); load() }
   }
 
+  /** Mint a code when the invitation is actually going out. */
+  async function issueCode(h: Household) {
+    if (await updateRow('households', h.id, { invite_code: generateInviteCode() }, 'generate invite code')) load()
+  }
+
+  /**
+   * Accepts several names at once, comma separated ("Ann Lee, Bo Chen"), because
+   * building the list is the bulk phase — one name per round trip through the
+   * form makes entering forty households tedious enough to avoid.
+   */
   async function addGuest(householdId: string) {
-    const parts = newGuest.trim().split(/\s+/)
-    if (!parts[0]) return
-    const row = await insertRow<Guest>('guests', {
-      household_id: householdId,
-      first_name: parts[0],
-      last_name: parts.slice(1).join(' ') || '',
-    }, 'add guest')
-    if (row) { setNewGuest(''); setAddingTo(null); load() }
+    const names = newGuest.split(',').map(n => n.trim()).filter(Boolean)
+    if (names.length === 0) return
+    let added = 0
+    for (const full of names) {
+      const parts = full.split(/\s+/)
+      const row = await insertRow<Guest>('guests', {
+        household_id: householdId,
+        first_name: parts[0],
+        last_name: parts.slice(1).join(' ') || '',
+      }, 'add guest')
+      if (row) added++
+    }
+    if (added) { setNewGuest(''); setAddingTo(null); load() }
   }
 
   async function removeGuest(id: string) {
@@ -109,7 +136,7 @@ export default function Guests() {
         <Stat label="Pending" value={stats.pending} accent="text-amber-400" />
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-wrap gap-3 mb-4">
         <TextInput
           placeholder="Search name, household, or code…"
           value={search}
@@ -118,12 +145,33 @@ export default function Guests() {
         />
         <form onSubmit={addHousehold} className="flex gap-2">
           <TextInput
-            placeholder="New household…"
+            placeholder="Add household…"
             value={newHousehold}
             onChange={e => setNewHousehold(e.target.value)}
           />
           <Btn variant="primary" type="submit">Add</Btn>
         </form>
+      </div>
+
+      <div className="flex gap-2 mb-6">
+        {([
+          ['all', 'All', counts.all],
+          ['draft', 'Not invited', counts.draft],
+          ['invited', 'Invited', counts.invited],
+        ] as const).map(([key, label, n]) => (
+          <button
+            key={key}
+            onClick={() => setView(key)}
+            className={
+              'text-[10px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-[2px] border transition-colors ' +
+              (view === key
+                ? 'border-zinc-500 text-zinc-50'
+                : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')
+            }
+          >
+            {label} {n}
+          </button>
+        ))}
       </div>
 
       {visible.length === 0 ? (
@@ -138,10 +186,16 @@ export default function Guests() {
                   <div>
                     <p className="text-sm text-zinc-50">{h.name}</p>
                     <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mt-1">
-                      Code {h.invite_code} · {list.length} of {h.max_guests} seats
+                      {h.invite_code
+                        ? <>Code {h.invite_code}</>
+                        : <span className="text-zinc-600">Not invited yet</span>}
+                      {' · '}{list.length} of {h.max_guests} seats
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {!h.invite_code && (
+                      <Btn onClick={() => issueCode(h)}>Generate code</Btn>
+                    )}
                     <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-500">Max</span>
                     <TextInput
                       type="number"
@@ -191,7 +245,7 @@ export default function Guests() {
                   >
                     <TextInput
                       autoFocus
-                      placeholder="First Last"
+                      placeholder="First Last, or several separated by commas"
                       value={newGuest}
                       onChange={e => setNewGuest(e.target.value)}
                       onBlur={() => { if (!newGuest.trim()) setAddingTo(null) }}

@@ -35,8 +35,19 @@ export interface Guest {
 export interface Household {
   id: string
   name: string
-  invite_code: string
+  /** Null until the invitation is actually sent — see Guests page. */
+  invite_code: string | null
   max_guests: number
+  notes: string | null
+}
+
+/**
+ * Invite code: 6 characters from an alphabet with no O/0 or I/1, so it can be
+ * read aloud or typed off a printed invitation without ambiguity.
+ */
+export function generateInviteCode(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('')
 }
 
 export interface RsvpResponse {
