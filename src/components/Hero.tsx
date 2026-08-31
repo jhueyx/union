@@ -1,9 +1,8 @@
-import { SITE_MODE, WEDDING } from '../config'
+import { useSiteContent } from '../lib/siteContent'
 import Monogram from './Monogram'
 
-const isLive = SITE_MODE === 'live'
-
 export default function Hero() {
+  const { isLive, wedding } = useSiteContent()
 
   return (
     <div className="w-full max-w-[700px] mx-auto text-center">
@@ -47,13 +46,13 @@ export default function Hero() {
 
         /* ── Live mode: date + venue + scroll prompt ──────────── */
         <div className="space-y-3 text-sm text-zinc-500">
-          {WEDDING.dateShort && (
-            <p className="tracking-[0.15em]">{WEDDING.dateShort}</p>
+          {wedding.dateShort && (
+            <p className="tracking-[0.15em]">{wedding.dateShort}</p>
           )}
-          {WEDDING.venue.city && (
-            <p className="tracking-wide">{WEDDING.venue.city}</p>
+          {wedding.venue.city && (
+            <p className="tracking-wide">{wedding.venue.city}</p>
           )}
-          {(!WEDDING.dateShort && !WEDDING.venue.city) && (
+          {(!wedding.dateShort && !wedding.venue.city) && (
             <p className="text-zinc-600">Details coming soon.</p>
           )}
           <a

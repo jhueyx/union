@@ -1,7 +1,8 @@
 // Union — registry page.
-import { REGISTRY_LINKS } from '../data/mock'
+import { useSiteContent } from '../lib/siteContent'
 
 export default function RegistryPage() {
+  const { registry } = useSiteContent()
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
       <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8 text-center">
@@ -14,12 +15,12 @@ export default function RegistryPage() {
       </p>
 
       <div className="max-w-md mx-auto space-y-4">
-        {REGISTRY_LINKS.length === 0 && (
+        {registry.length === 0 && (
           <p className="text-sm text-zinc-600 text-center">
             Registry details coming soon.
           </p>
         )}
-        {REGISTRY_LINKS.map((r) => (
+        {registry.map((r) => (
           <a
             key={r.id}
             href={r.url}

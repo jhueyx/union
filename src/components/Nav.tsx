@@ -1,7 +1,7 @@
 // Union — top navigation. Hidden in coming-soon mode. Uses React Router links.
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { SITE_MODE, WEDDING } from '../config'
+import { useSiteContent } from '../lib/siteContent'
 
 const LINKS = [
   { label: 'Our Story', to: '/story' },
@@ -24,9 +24,10 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function Nav() {
   const [open, setOpen] = useState(false)
+  const { isLive, wedding } = useSiteContent()
 
   // The nav does not render at all in coming-soon mode.
-  if (SITE_MODE === 'coming-soon') return null
+  if (!isLive) return null
 
   return (
     <header className="sticky top-0 z-50 bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-100">
@@ -36,7 +37,7 @@ export default function Nav() {
           onClick={() => setOpen(false)}
           className="text-xs tracking-[0.2em] uppercase text-zinc-500 hover:text-zinc-900 transition-colors duration-150"
         >
-          {WEDDING.coupleNames}
+          {wedding.coupleNames}
         </Link>
 
         {/* Desktop nav */}

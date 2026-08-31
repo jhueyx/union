@@ -1,7 +1,8 @@
 // Union — schedule / timeline of wedding-day events.
-import { WEDDING_EVENTS } from '../data/mock'
+import { useSiteContent } from '../lib/siteContent'
 
 export default function SchedulePage() {
+  const { events } = useSiteContent()
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
       <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-12 text-center">
@@ -9,23 +10,23 @@ export default function SchedulePage() {
       </p>
 
       <div className="max-w-md mx-auto space-y-10">
-        {WEDDING_EVENTS.length === 0 && (
+        {events.length === 0 && (
           <p className="text-sm text-zinc-600 text-center">
             Details coming soon.
           </p>
         )}
-        {WEDDING_EVENTS.map((evt) => (
+        {events.map((evt) => (
           <div
             key={evt.id}
             className="flex gap-6 border-b border-zinc-100 pb-8 last:border-0"
           >
             <div className="w-20 shrink-0 pt-0.5">
               <p className="text-xs tabular-nums tracking-[0.08em] text-zinc-900">
-                {evt.time}
+                {evt.time_label}
               </p>
-              {evt.endTime && (
+              {evt.end_time_label && (
                 <p className="text-[10px] text-zinc-600 mt-0.5">
-                  until {evt.endTime}
+                  until {evt.end_time_label}
                 </p>
               )}
             </div>

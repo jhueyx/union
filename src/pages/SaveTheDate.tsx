@@ -1,29 +1,30 @@
 // Union — save the date page with live countdown and share/calendar actions.
 import { useState } from 'react'
-import { WEDDING, WEDDING_DATE } from '../config'
+import { useSiteContent, type WeddingDisplay } from '../lib/siteContent'
 import CountdownTimer from '../components/CountdownTimer'
 import Button from '../components/ui/Button'
 
-function buildGoogleCalendarUrl(): string | null {
-  if (!WEDDING_DATE) return null
-  const start = new Date(WEDDING_DATE)
+function buildGoogleCalendarUrl(wedding: WeddingDisplay): string | null {
+  if (!wedding.dateTimeISO) return null
+  const start = new Date(wedding.dateTimeISO)
   if (Number.isNaN(start.getTime())) return null
   const end = new Date(start.getTime() + 6 * 60 * 60 * 1000) // assume ~6h
   const fmt = (d: Date) =>
     d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const params = new URLSearchParams({
     action: 'TEMPLATE',
-    text: 'Sally & Jason — Wedding',
+    text: `${wedding.coupleNames} — Wedding`,
     dates: `${fmt(start)}/${fmt(end)}`,
     details: 'We can’t wait to celebrate with you!',
-    location: WEDDING.venue.name || WEDDING.venue.city || '',
+    location: wedding.venue.name || wedding.venue.city || '',
   })
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
 
 export default function SaveTheDate() {
+  const { wedding } = useSiteContent()
   const [shareMsg, setShareMsg] = useState('')
-  const calendarUrl = buildGoogleCalendarUrl()
+  const calendarUrl = buildGoogleCalendarUrl(wedding)
 
   const handleShare = async () => {
     const url = window.location.href
@@ -63,10 +64,10 @@ export default function SaveTheDate() {
       </h1>
 
       <p className="text-lg font-[300] tracking-[0.08em] text-zinc-900 mb-2">
-        {WEDDING.date || 'Date to be announced'}
+        {wedding.date || 'Date to be announced'}
       </p>
       <p className="text-sm text-zinc-500 mb-14">
-        {WEDDING.venue.city || 'Location to be announced'}
+        {wedding.venue.city || 'Location to be announced'}
       </p>
 
       {/* Engagement photo placeholder */}
@@ -80,7 +81,7 @@ export default function SaveTheDate() {
       </div>
 
       <div className="mb-14 flex justify-center">
-        <CountdownTimer targetDate={WEDDING_DATE} />
+        <CountdownTimer targetDate={wedding.dateTimeISO} />
       </div>
 
       <p className="italic text-sm text-zinc-600 mb-12">

@@ -1,10 +1,9 @@
 // Union — home page. Renders the existing Hero, plus a welcome note in live mode.
-import { SITE_MODE } from '../config'
+import { useSiteContent } from '../lib/siteContent'
 import Hero from '../components/Hero'
 
-const isLive = SITE_MODE === 'live'
-
 export default function Home() {
+  const { isLive } = useSiteContent()
   return (
     <>
       <div className="flex items-center justify-center min-h-[90vh] px-6 py-20">

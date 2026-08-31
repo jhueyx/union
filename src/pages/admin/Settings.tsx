@@ -1,36 +1,48 @@
 // Wedding settings — the fixed point everything else in the planner measures
-// from. The date lives here rather than in src/config.ts so it can be changed
-// without a deploy; config.ts still drives the public site (see CLAUDE.md).
+// from, and (since this table is publicly readable) what actually drives the
+// live public site. Editing here takes effect immediately, no deploy needed.
 import { useEffect, useState } from 'react'
 import {
   fetchSettings, saveSettings, daysUntil, relativeDay, formatDay,
   fetchAll, insertRow, deleteRow,
-  type WeddingSettings, type MealOption,
+  type WeddingSettings, type MealOption, type SiteMode,
 } from '../../lib/planning'
 import { PageHeader, Panel, Label, TextInput, Btn, Empty } from '../../components/admin/AdminUI'
 
 type Draft = {
+  site_mode: SiteMode
+  couple_names: string
   wedding_date: string
   ceremony_time: string
   venue_name: string
   venue_address: string
+  venue_city: string
+  venue_maps_url: string
+  dress_code: string
   rsvp_deadline: string
   guest_target: string
   single_menu: boolean
 }
 
 const EMPTY: Draft = {
+  site_mode: 'coming-soon', couple_names: 'Sally & Jason',
   wedding_date: '', ceremony_time: '', venue_name: '',
-  venue_address: '', rsvp_deadline: '', guest_target: '', single_menu: false,
+  venue_address: '', venue_city: '', venue_maps_url: '', dress_code: '',
+  rsvp_deadline: '', guest_target: '', single_menu: false,
 }
 
 function toDraft(s: WeddingSettings): Draft {
   return {
+    site_mode: s.site_mode,
+    couple_names: s.couple_names || 'Sally & Jason',
     wedding_date: s.wedding_date ?? '',
     // Postgres hands back "17:00:00"; <input type="time"> wants "17:00".
     ceremony_time: (s.ceremony_time ?? '').slice(0, 5),
     venue_name: s.venue_name ?? '',
     venue_address: s.venue_address ?? '',
+    venue_city: s.venue_city ?? '',
+    venue_maps_url: s.venue_maps_url ?? '',
+    dress_code: s.dress_code ?? '',
     rsvp_deadline: s.rsvp_deadline ?? '',
     guest_target: s.guest_target == null ? '' : String(s.guest_target),
     single_menu: s.single_menu,
@@ -95,10 +107,15 @@ export default function Settings() {
   async function save() {
     setSaving(true)
     const ok = await saveSettings({
+      site_mode: draft.site_mode,
+      couple_names: draft.couple_names.trim() || 'Sally & Jason',
       wedding_date: draft.wedding_date || null,
       ceremony_time: draft.ceremony_time || null,
       venue_name: draft.venue_name.trim() || null,
       venue_address: draft.venue_address.trim() || null,
+      venue_city: draft.venue_city.trim() || null,
+      venue_maps_url: draft.venue_maps_url.trim() || null,
+      dress_code: draft.dress_code.trim() || null,
       rsvp_deadline: draft.rsvp_deadline || null,
       guest_target: draft.guest_target ? Number(draft.guest_target) : null,
       single_menu: draft.single_menu,
@@ -118,6 +135,35 @@ export default function Settings() {
         title="Settings"
         action={note ? <span className="text-[10px] tracking-[0.15em] uppercase text-emerald-400">{note}</span> : undefined}
       />
+
+      {/* Gates the entire public site. Publicly readable, so this takes
+          effect the moment it's saved — no deploy, no waiting on Vercel. */}
+      <Panel className="flex items-start justify-between gap-4">
+        <div>
+          <Label>Site status</Label>
+          <p className="text-sm text-zinc-400">
+            {draft.site_mode === 'live'
+              ? 'The full site is live — nav, story, RSVP, everything below.'
+              : 'Guests see only the coming-soon landing page. Nav is hidden.'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {(['coming-soon', 'live'] as const).map(m => (
+            <button
+              key={m}
+              onClick={() => setDraft(d => ({ ...d, site_mode: m }))}
+              className={
+                'text-[10px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-[2px] border transition-colors ' +
+                (draft.site_mode === m
+                  ? 'border-zinc-500 text-zinc-50'
+                  : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')
+              }
+            >
+              {m === 'live' ? 'Live' : 'Coming soon'}
+            </button>
+          ))}
+        </div>
+      </Panel>
 
       {date ? (
         <Panel>
@@ -140,6 +186,12 @@ export default function Settings() {
 
       <Panel className="space-y-5">
         <div className="grid md:grid-cols-2 gap-5">
+          <Field label="Couple names">
+            <TextInput value={draft.couple_names} onChange={set('couple_names')} className="w-full" />
+          </Field>
+          <Field label="Dress code">
+            <TextInput value={draft.dress_code} onChange={set('dress_code')} placeholder="e.g. Black Tie Optional" className="w-full" />
+          </Field>
           <Field label="Wedding date">
             <TextInput type="date" value={draft.wedding_date} onChange={set('wedding_date')} className="w-full" />
           </Field>
@@ -149,8 +201,14 @@ export default function Settings() {
           <Field label="Venue">
             <TextInput value={draft.venue_name} onChange={set('venue_name')} placeholder="Venue name" className="w-full" />
           </Field>
+          <Field label="Venue city">
+            <TextInput value={draft.venue_city} onChange={set('venue_city')} placeholder="e.g. San Francisco" className="w-full" />
+          </Field>
           <Field label="Venue address">
             <TextInput value={draft.venue_address} onChange={set('venue_address')} placeholder="Street, city" className="w-full" />
+          </Field>
+          <Field label="Venue map link">
+            <TextInput value={draft.venue_maps_url} onChange={set('venue_maps_url')} placeholder="Google Maps share URL" className="w-full" />
           </Field>
           <Field label="RSVP deadline">
             <TextInput type="date" value={draft.rsvp_deadline} onChange={set('rsvp_deadline')} className="w-full" />
@@ -245,26 +303,6 @@ export default function Settings() {
         </form>
       </Panel>
 
-      {/* The public site reads src/config.ts synchronously in a dozen
-          components, so it is not wired to this table. Rather than let the two
-          drift silently, hand over the exact lines to paste. */}
-      <Panel>
-        <Label>For the public site</Label>
-        <p className="text-sm text-zinc-400 mb-4">
-          The guest-facing pages still read <span className="text-zinc-300">src/config.ts</span>.
-          Paste this in when the details are final, then deploy.
-        </p>
-        <pre className="text-xs text-zinc-300 bg-[#070707] border border-zinc-800 rounded-[2px] p-4 overflow-x-auto">
-{`export const WEDDING_DATE = '${draft.wedding_date || ''}${draft.wedding_date && draft.ceremony_time ? `T${draft.ceremony_time}:00` : ''}'
-
-date: '${draft.wedding_date ? formatDay(draft.wedding_date) : ''}',
-rsvpDeadline: '${draft.rsvp_deadline ? formatDay(draft.rsvp_deadline) : ''}',
-venue: {
-  name: '${draft.venue_name}',
-  address: '${draft.venue_address}',
-},`}
-        </pre>
-      </Panel>
     </div>
   )
 }

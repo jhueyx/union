@@ -1,10 +1,9 @@
 // Union — FAQ page with a simple accordion grouped by category.
 import { useState } from 'react'
-import { FAQ_ITEMS } from '../data/mock'
-import type { FAQItem } from '../types'
+import { useSiteContent, type FaqItem } from '../lib/siteContent'
 
-function groupByCategory(items: FAQItem[]): Record<string, FAQItem[]> {
-  return items.reduce<Record<string, FAQItem[]>>((acc, item) => {
+function groupByCategory(items: FaqItem[]): Record<string, FaqItem[]> {
+  return items.reduce<Record<string, FaqItem[]>>((acc, item) => {
     const key = item.category ?? 'General'
     ;(acc[key] ??= []).push(item)
     return acc
@@ -12,8 +11,9 @@ function groupByCategory(items: FAQItem[]): Record<string, FAQItem[]> {
 }
 
 export default function FaqPage() {
+  const { faq } = useSiteContent()
   const [openId, setOpenId] = useState<string | null>(null)
-  const groups = groupByCategory(FAQ_ITEMS)
+  const groups = groupByCategory(faq)
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
@@ -22,7 +22,7 @@ export default function FaqPage() {
       </p>
 
       <div className="max-w-lg mx-auto space-y-12">
-        {FAQ_ITEMS.length === 0 && (
+        {faq.length === 0 && (
           <p className="text-sm text-zinc-600 text-center">
             Details coming soon.
           </p>

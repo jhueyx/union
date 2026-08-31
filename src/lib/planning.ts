@@ -203,6 +203,8 @@ export const money = (n: number) =>
 
 // ── Settings ────────────────────────────────────────────────────────────────
 
+export type SiteMode = 'coming-soon' | 'live'
+
 /** One row, id = true. See the wedding_settings migration. */
 export interface WeddingSettings {
   id: boolean
@@ -210,13 +212,68 @@ export interface WeddingSettings {
   ceremony_time: string | null
   venue_name: string | null
   venue_address: string | null
+  venue_city: string | null
+  venue_maps_url: string | null
+  dress_code: string | null
+  couple_names: string
   rsvp_deadline: string | null
   guest_target: number | null
   notes: string | null
   /** One fixed banquet menu for everyone — skips the per-guest meal-choice
    *  step in RSVP, which assumes Western plated service by default. */
   single_menu: boolean
+  /** Gates the public site — 'coming-soon' shows the landing page only, no
+   *  nav; 'live' shows the full site. Flipping this needs no deploy. */
+  site_mode: SiteMode
   updated_at?: string
+}
+
+// ── Public site content ──────────────────────────────────────────────────
+// One table per guest-facing page — these used to be static arrays in
+// src/data/mock.ts, which meant editing them needed a code deploy. Public
+// SELECT + admin-only write, same as wedding_meals.
+
+export interface FaqItem {
+  id: string
+  question: string
+  answer: string
+  category: string | null
+  position: number
+}
+
+export interface TravelItem {
+  id: string
+  type: 'hotel' | 'transport' | 'activity' | 'restaurant'
+  name: string
+  address: string | null
+  url: string | null
+  note: string | null
+  price_range: string | null
+  booking_code: string | null
+  position: number
+}
+
+export interface RegistryItem {
+  id: string
+  store: string
+  url: string
+  note: string | null
+  position: number
+}
+
+/** The guest-facing schedule (/schedule, /invitation) — distinct from
+ *  wedding_timeline, the internal day-of running order, which can carry
+ *  vendor call times and other detail not meant for guests. */
+export interface PublicEvent {
+  id: string
+  name: string
+  time_label: string
+  end_time_label: string | null
+  location: string | null
+  address: string | null
+  description: string | null
+  dresscode: string | null
+  position: number
 }
 
 export interface WeddingGift {
@@ -267,59 +324,7 @@ export async function saveSettings(patch: RowPatch): Promise<boolean> {
 }
 
 // ── Dates ───────────────────────────────────────────────────────────────────
-//
-// Everything here works in whole local days on bare 'YYYY-MM-DD' strings.
-// `new Date('2027-05-08')` parses as UTC midnight, which reads as the previous
-// day anywhere west of Greenwich — the reason a countdown can sit one day off
-// all afternoon. Parsing the parts by hand keeps it in local time.
-
-export function parseDay(iso: string): Date {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-export function today(): Date {
-  const n = new Date()
-  return new Date(n.getFullYear(), n.getMonth(), n.getDate())
-}
-
-export function toISODay(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-/** Whole days from today to `iso`. Negative once it is in the past. */
-export function daysUntil(iso: string): number {
-  return Math.round((parseDay(iso).getTime() - today().getTime()) / 86_400_000)
-}
-
-/** `iso` shifted by `days`, as another ISO day string. */
-export function shiftDay(iso: string, days: number): string {
-  const d = parseDay(iso)
-  d.setDate(d.getDate() + days)
-  return toISODay(d)
-}
-
-/** "in 8 months" / "in 3 weeks" / "tomorrow" / "6 days ago". */
-export function relativeDay(iso: string): string {
-  const n = daysUntil(iso)
-  if (n === 0) return 'today'
-  if (n === 1) return 'tomorrow'
-  if (n === -1) return 'yesterday'
-  const ago = n < 0
-  const a = Math.abs(n)
-  const [value, unit] =
-    a < 21 ? [a, 'day'] :
-    a < 60 ? [Math.round(a / 7), 'week'] :
-    a < 365 ? [Math.round(a / 30), 'month'] :
-    [Math.round(a / 30) / 12, 'year']
-  const rounded = unit === 'year' ? Math.round(value * 10) / 10 : value
-  const plural = rounded === 1 ? '' : 's'
-  return ago ? `${rounded} ${unit}${plural} ago` : `in ${rounded} ${unit}${plural}`
-}
-
-/** "Saturday, May 8, 2027" from a bare day string. */
-export function formatDay(iso: string): string {
-  return parseDay(iso).toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  })
-}
+// Moved to dates.ts so the public site can use them too — this module is
+// admin-only (see the header comment). Re-exported here so existing imports
+// throughout the admin pages don't need to change.
+export * from './dates'

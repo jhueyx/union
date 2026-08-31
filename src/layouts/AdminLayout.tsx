@@ -16,6 +16,7 @@ const SECTIONS = [
   { to: '/admin/budget', label: 'Budget' },
   { to: '/admin/vendors', label: 'Vendors' },
   { to: '/admin/gifts', label: 'Gifts' },
+  { to: '/admin/content', label: 'Content' },
   { to: '/admin/exports', label: 'Exports' },
   { to: '/admin/settings', label: 'Settings' },
 ]

@@ -23,6 +23,7 @@ import Timeline from '../pages/admin/Timeline'
 import Budget from '../pages/admin/Budget'
 import Vendors from '../pages/admin/Vendors'
 import Gifts from '../pages/admin/Gifts'
+import Content from '../pages/admin/Content'
 import Settings from '../pages/admin/Settings'
 import Exports from '../pages/admin/Exports'
 
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
       { path: 'budget', element: <Budget /> },
       { path: 'vendors', element: <Vendors /> },
       { path: 'gifts', element: <Gifts /> },
+      { path: 'content', element: <Content /> },
       { path: 'exports', element: <Exports /> },
       { path: 'settings', element: <Settings /> },
     ],

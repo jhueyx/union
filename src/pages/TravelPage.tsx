@@ -1,9 +1,10 @@
 // Union — travel page: hotels and transportation.
-import { TRAVEL_RECOMMENDATIONS } from '../data/mock'
+import { useSiteContent } from '../lib/siteContent'
 
 export default function TravelPage() {
-  const hotels = TRAVEL_RECOMMENDATIONS.filter((t) => t.type === 'hotel')
-  const transport = TRAVEL_RECOMMENDATIONS.filter((t) => t.type === 'transport')
+  const { travel } = useSiteContent()
+  const hotels = travel.filter((t) => t.type === 'hotel')
+  const transport = travel.filter((t) => t.type === 'transport')
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
@@ -30,9 +31,9 @@ export default function TravelPage() {
                 <p className="text-base font-[300] text-zinc-900">
                   {h.name}
                 </p>
-                {h.priceRange && (
+                {h.price_range && (
                   <span className="text-[10px] tracking-[0.15em] text-zinc-600">
-                    {h.priceRange}
+                    {h.price_range}
                   </span>
                 )}
               </div>
@@ -46,11 +47,11 @@ export default function TravelPage() {
                   {h.note}
                 </p>
               )}
-              {h.bookingCode && (
+              {h.booking_code && (
                 <p className="text-xs text-zinc-500 mt-2">
                   Booking code:{' '}
                   <span className="font-medium text-zinc-700">
-                    {h.bookingCode}
+                    {h.booking_code}
                   </span>
                 </p>
               )}
@@ -81,9 +82,9 @@ export default function TravelPage() {
             <div key={t.id} className="border-b border-zinc-100 pb-5 last:border-0">
               <p className="text-sm font-medium text-zinc-900">
                 {t.name}
-                {t.priceRange && (
+                {t.price_range && (
                   <span className="ml-2 text-[10px] tracking-[0.15em] text-zinc-600">
-                    {t.priceRange}
+                    {t.price_range}
                   </span>
                 )}
               </p>

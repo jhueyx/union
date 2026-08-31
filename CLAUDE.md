@@ -8,16 +8,16 @@ A full wedding website for sallyjason.com. Built with React + Vite + TypeScript 
 
 ## Site modes
 
-Controlled by a single line in `src/config.ts`:
-
-```ts
-export const SITE_MODE: SiteMode = 'coming-soon' // or 'live'
-```
+Controlled live from `/admin/settings` → **Site status** — `wedding_settings.site_mode`,
+publicly readable, no deploy needed to flip it:
 
 - `'coming-soon'` — shows a minimal landing page with the SJ monogram and "Coming Soon" label. Nav is hidden. No Notify Me button (removed — it was a no-op).
 - `'live'` — shows the full multi-page site with nav.
 
 **Do not flip to `'live'` until all wedding details are filled in and guests are added.**
+
+`src/config.ts` still has a `SITE_MODE` constant, but nothing reads it any more
+— see "The public site is database-driven" below.
 
 ## Stack
 
@@ -41,28 +41,29 @@ export const SITE_MODE: SiteMode = 'coming-soon' // or 'live'
 
 | Route | File | Status |
 |-------|------|--------|
-| `/` | `src/pages/Home.tsx` | Done |
-| `/story` | `src/pages/StoryPage.tsx` | Placeholder — needs real story + photo |
-| `/save-the-date` | `src/pages/SaveTheDate.tsx` | Placeholder — needs date + photo |
-| `/invitation` | `src/pages/Invitation.tsx` | Placeholder — needs date/venue/dresscode |
+| `/` | `src/pages/Home.tsx` | Live — reads `wedding_settings` |
+| `/story` | `src/pages/StoryPage.tsx` | Placeholder — needs real story + photo (not database-backed yet) |
+| `/save-the-date` | `src/pages/SaveTheDate.tsx` | Live — reads `wedding_settings`; still needs an engagement photo |
+| `/invitation` | `src/pages/Invitation.tsx` | Live — reads `wedding_settings` + `wedding_events` |
 | `/rsvp` | `src/pages/RsvpPage.tsx` | Live — reads/writes Supabase |
 | `/i/:inviteCode` | `src/pages/InviteCode.tsx` | Live — personalized invite landing |
-| `/schedule` | `src/pages/SchedulePage.tsx` | Empty state shown — needs `WEDDING_EVENTS` filled in |
-| `/travel` | `src/pages/TravelPage.tsx` | Empty state shown — needs `TRAVEL_RECOMMENDATIONS` filled in |
-| `/registry` | `src/pages/RegistryPage.tsx` | Empty state shown — needs `REGISTRY_LINKS` filled in |
-| `/faq` | `src/pages/FaqPage.tsx` | Empty state shown — needs `FAQ_ITEMS` filled in |
+| `/schedule` | `src/pages/SchedulePage.tsx` | Live — reads `wedding_events` |
+| `/travel` | `src/pages/TravelPage.tsx` | Live — reads `wedding_travel` |
+| `/registry` | `src/pages/RegistryPage.tsx` | Live — reads `wedding_registry` |
+| `/faq` | `src/pages/FaqPage.tsx` | Live — reads `wedding_faq` |
 | `/photos` | `src/pages/PhotosPage.tsx` | Placeholder |
 | `/guestbook` | `src/pages/GuestbookPage.tsx` | Placeholder |
 | `/admin` | `src/pages/admin/Dashboard.tsx` | Live — planner home, see below |
 | `/admin/guests` | `src/pages/admin/Guests.tsx` | Live — households, guests, side, addresses |
 | `/admin/seating` | `src/pages/admin/Seating.tsx` | Live — drag-and-drop floor plan |
 | `/admin/checklist` | `src/pages/admin/Checklist.tsx` | Live — seeds from `CHECKLIST_TEMPLATE` once a date is set |
-| `/admin/timeline` | `src/pages/admin/Timeline.tsx` | Live — day-of running order |
+| `/admin/timeline` | `src/pages/admin/Timeline.tsx` | Live — day-of running order (internal, not shown to guests) |
 | `/admin/budget` | `src/pages/admin/Budget.tsx` | Live — estimates vs. actuals |
 | `/admin/vendors` | `src/pages/admin/Vendors.tsx` | Live — considering/booked/declined |
 | `/admin/gifts` | `src/pages/admin/Gifts.tsx` | Live — red envelope / cash gift tracker |
+| `/admin/content` | `src/pages/admin/Content.tsx` | Live — edits FAQ, Travel, Registry, and the public Schedule |
 | `/admin/exports` | `src/pages/admin/Exports.tsx` | Live — addresses, catering, seating chart as copy/print text |
-| `/admin/settings` | `src/pages/admin/Settings.tsx` | Live — wedding date, venue, RSVP deadline, meal options |
+| `/admin/settings` | `src/pages/admin/Settings.tsx` | Live — site status, wedding date, venue, RSVP deadline, meal options |
 
 Nav order: Our Story · Save the Date · Invite · RSVP · Schedule · Travel · Registry · FAQ
 
@@ -70,11 +71,14 @@ Nav order: Our Story · Save the Date · Invite · RSVP · Schedule · Travel ·
 
 | File | Purpose |
 |------|---------|
-| `src/config.ts` | `SITE_MODE`, `SITE_PHASE`, `WEDDING_DATE`, all wedding details |
-| `src/data/mock.ts` | Static content arrays — all currently empty, fill in when details confirmed |
+| `src/config.ts` | **Dead.** `SITE_MODE`/`SITE_PHASE`/`WEDDING`/`WEDDING_DATE` are no longer read anywhere — see "The public site is database-driven" |
+| `src/data/mock.ts` | **Dead.** `MEAL_CHOICES`/`FAQ_ITEMS`/`TRAVEL_RECOMMENDATIONS`/`REGISTRY_LINKS`/`WEDDING_EVENTS` are no longer read anywhere — their tables replaced them |
+| `src/lib/siteContent.tsx` | Fetches `wedding_settings` + the four content tables once at the `RootLayout` root; `useSiteContent()` hook hands it to every public page |
+| `src/lib/dates.ts` | Pure date helpers, usable from the public site — `planning.ts` re-exports these for admin |
 | `src/types/index.ts` | All TypeScript types |
 | `src/lib/supabase.ts` | Supabase client (uses `VITE_SUPABASE_*` env vars) |
 | `src/routes/index.tsx` | All routes |
+| `src/layouts/RootLayout.tsx` | Wraps every public route in `SiteContentProvider` |
 | `src/layouts/AdminLayout.tsx` | Auth gate for `/admin` — checks Supabase session, shows Login or Dashboard |
 | `src/pages/admin/Login.tsx` | Admin login form (Supabase email/password) |
 | `src/components/Hero.tsx` | Home page hero, mode-aware |
@@ -82,18 +86,10 @@ Nav order: Our Story · Save the Date · Invite · RSVP · Schedule · Travel ·
 | `src/utils/index.ts` | `getCountdown`, `formatDate`, `generateInviteCode` |
 | `vercel.json` | SPA rewrite — all routes → `/index.html` |
 
-## static content in `src/data/mock.ts`
-
-Four arrays are currently empty. Fill them in when details are confirmed. Meal
-choices used to be a fifth (`MEAL_CHOICES`) — that one moved to the
-`wedding_meals` table, managed at `/admin/settings`, because a hardcoded empty
-array meant the RSVP meal step had nothing to offer and RSVP could not be
-completed. See "The planner" below.
-
-- `FAQ_ITEMS` — accordion FAQ (`id`, `category`, `question`, `answer`)
-- `TRAVEL_RECOMMENDATIONS` — hotels + transport (`type: 'hotel' | 'transport'`, `name`, `address`, `url`, `note`, `priceRange`, `bookingCode`)
-- `REGISTRY_LINKS` — store name + URL (`id`, `store`, `url`, `note`)
-- `WEDDING_EVENTS` — ceremony/cocktail/reception (`id`, `name`, `time`, `endTime`, `location`, `address`, `description`, `dresscode`)
+`src/components/sections/*` (`Details`, `Rsvp`, `Registry`, `Schedule`,
+`Travel`) is unused dead code from an earlier single-page design — no route
+imports any of them. Left alone; don't wire these up by mistake instead of the
+real pages listed above.
 
 ## Supabase schema
 
@@ -151,13 +147,14 @@ Seven more tables back the planning suite, all admin-only (RLS requires
 `src/lib/planning.ts` (see "Admin writes must report failure" below):
 
 - **`wedding_settings`** — one row, `id = true` enforced by a check constraint.
-  `wedding_date`, `ceremony_time`, `venue_name`, `venue_address`,
-  `rsvp_deadline`, `guest_target`, `notes`, `single_menu`. This is the fixed
-  point the whole planner measures from — without a date the checklist can't
-  say what's overdue and the Dashboard can't show days-to-go. Set at
-  `/admin/settings`. Publicly readable (`RsvpPage.tsx` needs `single_menu`),
-  admin-only to write. **Does not drive the public site** — `src/config.ts`
-  does, and the two are not wired together (see below).
+  `site_mode` (`'coming-soon' | 'live'`, checked), `couple_names`,
+  `wedding_date`, `ceremony_time`, `venue_name`, `venue_address`, `venue_city`,
+  `venue_maps_url`, `dress_code`, `rsvp_deadline`, `guest_target`, `notes`,
+  `single_menu`. This is the fixed point the whole planner measures from —
+  without a date the checklist can't say what's overdue and the Dashboard
+  can't show days-to-go. **Also drives the public site directly** — publicly
+  readable, admin-only to write, edited at `/admin/settings`. See "The public
+  site is database-driven" below.
 - **`wedding_meals`** — meal options for the RSVP flow. `id` (slug), `label`,
   `description`, `dietary_tags[]`, `is_child_meal`, `position`. Publicly
   readable (guests need it during RSVP, which is unauthenticated), admin-only
@@ -184,6 +181,47 @@ Seven more tables back the planning suite, all admin-only (RLS requires
   at `/admin/gifts`; totalled on the Dashboard.
 - **`wedding_tables`** / **`wedding_seat_assignments`** — the seating floor
   plan (already existed before this section was written up).
+
+### The public site is database-driven
+
+`src/config.ts` and `src/data/mock.ts` are **dead code** — nothing imports
+from them any more. The site reads live from four public-readable,
+admin-write tables (edited at `/admin/content`), plus `wedding_settings`:
+
+- **`wedding_faq`** — `question`, `answer`, `category`, `position`. Backs `/faq`.
+- **`wedding_travel`** — `type` (`hotel | transport | activity | restaurant`,
+  checked), `name`, `address`, `url`, `note`, `price_range`, `booking_code`,
+  `position`. Backs `/travel`.
+- **`wedding_registry`** — `store`, `url`, `note`, `position`. Backs `/registry`.
+- **`wedding_events`** — the **guest-facing** schedule shown on `/schedule` and
+  `/invitation`: `name`, `time_label`, `end_time_label` (free-text display
+  strings like `"5:00 PM"`, not real `time` columns — this is what a guest
+  reads, not something sorted or computed on), `location`, `address`,
+  `description`, `dresscode`, `position`. **Distinct from `wedding_timeline`**,
+  the internal day-of running order, which can carry vendor call times and
+  other detail not meant for guests — don't conflate the two.
+
+All four: RLS `select using (true)`, admin `for all using (auth.role() =
+'authenticated')` — same shape as `wedding_meals`. `position` is set to the
+list length at insert time (append order); there's no drag-to-reorder yet.
+
+`src/lib/siteContent.tsx` fetches `wedding_settings` + all four content tables
+once, at the `RootLayout` root (mounted for every public route, not `/admin`).
+`SiteContentProvider` renders `null` while that first fetch is in flight —
+same gate `AdminLayout` uses for the auth session — so a visitor never sees a
+flash of `coming-soon` before the real `site_mode` lands. `useSiteContent()`
+hands back `{ isLive, wedding, events, travel, registry, faq }`; `wedding` is
+shaped to match the old `config.ts` `WEDDING` object closely (`coupleNames`,
+`date`, `dateShort`, `time`, `dateTimeISO`, `rsvpDeadline`, `dressCode`,
+`venue: { name, address, city, mapsUrl }`) so the display components barely
+changed. Pure formatting (`formatDay`, `formatDayShort`, `formatTime`) lives
+in `src/lib/dates.ts`, not `planning.ts` — that module is admin-only (reads
+`supabase` with the assumption of an authenticated caller) and must not be
+imported from public pages.
+
+Editing `wedding_settings` or any of the four content tables at
+`/admin/settings` / `/admin/content` takes effect on the live site immediately
+— no deploy, no waiting on Vercel.
 
 ### Banquet style (`wedding_settings.single_menu`)
 
@@ -227,16 +265,6 @@ pasted into an email or printed:
   RSVP has come in, rather than reading zero.
 - **Seating chart** — one section per table with who's seated, from the same
   data as `/admin/seating`.
-
-### `src/config.ts` is still separate
-
-The guest-facing site (`Hero`, `Nav`, `Details`, `Rsvp`, `Schedule`, `Travel`,
-`Registry` sections, `Invitation`, `SaveTheDate`) reads `WEDDING`/`WEDDING_DATE`
-from `config.ts` synchronously in about a dozen components — it is **not**
-wired to `wedding_settings`. `/admin/settings` has a "For the public site"
-panel that generates the exact lines to paste into `config.ts` from what's
-saved in `wedding_settings`, so the two don't drift silently. Copy it in and
-deploy when details are final; don't assume changing one changes the other.
 
 ## Side and children
 
@@ -305,14 +333,14 @@ No manual `vercel --prod` needed. `vercel.json` has a catch-all rewrite for Reac
 
 ## What still needs to be done before going live
 
-1. Set the wedding date and venue at `/admin/settings`, then paste the generated lines into `src/config.ts` (see "`src/config.ts` is still separate")
-2. Add meal options at `/admin/settings` — RSVP can't be completed without at least one
-3. Fill in `src/data/mock.ts` — FAQs, travel, registry, events
-4. Add engagement photo to Story page (`src/pages/StoryPage.tsx`) and Save the Date (`src/pages/SaveTheDate.tsx`)
-5. Write the real story in `src/pages/StoryPage.tsx` (three placeholder sections)
+1. Set the wedding date, venue, dress code at `/admin/settings`
+2. Add meal options at `/admin/settings` — RSVP can't be completed without at least one (unless Banquet style is on)
+3. Fill in FAQ, Travel, Registry, and Schedule at `/admin/content`
+4. Add engagement photo to Story page (`src/pages/StoryPage.tsx`) and Save the Date (`src/pages/SaveTheDate.tsx`) — no image-upload path exists yet, this is still a code change
+5. Write the real story in `src/pages/StoryPage.tsx` (three placeholder sections) — also still static, not database-backed
 6. Add guests via `/admin/guests`; addresses if invitations are going out by mail
 7. Set custom domain `sallyjason.com` in Vercel dashboard
-8. Flip `SITE_MODE` to `'live'` in `src/config.ts`
+8. Flip **Site status** to Live at `/admin/settings` — takes effect immediately, no deploy
 
 ## Commit and push after every change
 

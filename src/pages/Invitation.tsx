@@ -1,7 +1,6 @@
 // Union — formal invitation page.
 import { Link } from 'react-router-dom'
-import { WEDDING } from '../config'
-import { WEDDING_EVENTS } from '../data/mock'
+import { useSiteContent } from '../lib/siteContent'
 
 const EM = '\u2014'
 
@@ -11,6 +10,7 @@ const SECONDARY_BTN =
   'inline-flex items-center justify-center rounded-[2px] text-xs font-medium tracking-[0.18em] uppercase px-7 py-3 border border-zinc-200 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900 transition-all duration-200'
 
 export default function Invitation() {
+  const { wedding, events } = useSiteContent()
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28 text-center">
       <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8">
@@ -34,38 +34,40 @@ export default function Invitation() {
       <dl className="space-y-6 mb-14">
         <div>
           <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Date</dt>
-          <dd className="text-lg font-[300] text-zinc-900">{WEDDING.date || EM}</dd>
+          <dd className="text-lg font-[300] text-zinc-900">{wedding.date || EM}</dd>
         </div>
         <div>
           <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Time</dt>
-          <dd className="text-lg font-[300] text-zinc-900">{WEDDING.time || EM}</dd>
+          <dd className="text-lg font-[300] text-zinc-900">{wedding.time || EM}</dd>
         </div>
         <div>
           <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Venue</dt>
-          <dd className="text-lg font-[300] text-zinc-900">{WEDDING.venue.name || EM}</dd>
-          {WEDDING.venue.city && (
-            <dd className="text-sm text-zinc-500 mt-1">{WEDDING.venue.city}</dd>
+          <dd className="text-lg font-[300] text-zinc-900">{wedding.venue.name || EM}</dd>
+          {wedding.venue.city && (
+            <dd className="text-sm text-zinc-500 mt-1">{wedding.venue.city}</dd>
           )}
         </div>
         <div>
           <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Dress Code</dt>
-          <dd className="text-lg font-[300] text-zinc-900">{WEDDING.dressCode ||'Black Tie Optional'}</dd>
+          <dd className="text-lg font-[300] text-zinc-900">{wedding.dressCode || 'Black Tie Optional'}</dd>
         </div>
         <div>
           <dt className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-1">Kindly Reply By</dt>
-          <dd className="text-lg font-[300] text-zinc-900">{WEDDING.rsvpDeadline || EM}</dd>
+          <dd className="text-lg font-[300] text-zinc-900">{wedding.rsvpDeadline || EM}</dd>
         </div>
       </dl>
 
       {/* Event flow preview */}
-      <div className="mb-14">
-        <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-6">
-          The Celebration
-        </p>
-        <p className="text-sm text-zinc-500 tracking-wide">
-          {WEDDING_EVENTS.map((e) => e.name).join('  ·  ')}
-        </p>
-      </div>
+      {events.length > 0 && (
+        <div className="mb-14">
+          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-6">
+            The Celebration
+          </p>
+          <p className="text-sm text-zinc-500 tracking-wide">
+            {events.map((e) => e.name).join('  ·  ')}
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-center gap-4">
         <Link to="/rsvp" className={PRIMARY_BTN}>RSVP</Link>
