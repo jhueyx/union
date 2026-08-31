@@ -42,6 +42,7 @@ export const NAV_LINKS = [
   { label: 'Travel', to: '/travel' },
   { label: 'Gifts', to: '/registry' },
   { label: 'FAQ', to: '/faq' },
+  { label: 'Guestbook', to: '/guestbook' },
 ]
 
 /** The copy Hero.tsx always showed before this was editable. Still the

@@ -12,16 +12,16 @@ import { useEffect, useRef, useState } from 'react'
 import {
   fetchAll, insertRow, updateRow, deleteRow, fetchSettings, saveSettings,
   type FaqItem, type TravelItem, type PublicEvent, type StoryItem,
-  type PhotoItem, type WeddingSettings,
+  type PhotoItem, type WeddingSettings, type GuestbookEntry,
 } from '../../lib/planning'
 import { DEFAULT_GIFT_MESSAGE } from '../../lib/siteContent'
 import { photoUrl, uploadPhoto, deletePhotoFile } from '../../lib/photos'
 import { PageHeader, Panel, Label, TextInput, Select, Btn, Empty } from '../../components/admin/AdminUI'
 
-type View = 'story' | 'photos' | 'faq' | 'travel' | 'gifts' | 'schedule'
+type View = 'story' | 'photos' | 'faq' | 'travel' | 'gifts' | 'schedule' | 'guestbook'
 const VIEWS: [View, string][] = [
   ['story', 'Story'], ['photos', 'Photos'], ['faq', 'FAQ'], ['travel', 'Travel'],
-  ['gifts', 'Gifts'], ['schedule', 'Schedule'],
+  ['gifts', 'Gifts'], ['schedule', 'Schedule'], ['guestbook', 'Guestbook'],
 ]
 
 const TEXTAREA_CLS =
@@ -478,6 +478,53 @@ function ScheduleTab() {
   )
 }
 
+// ── Guestbook (moderation only — entries come from guests, not admin) ──────
+
+function GuestbookTab() {
+  const [items, setItems] = useState<GuestbookEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  async function load() {
+    setItems(await fetchAll<GuestbookEntry>('wedding_guestbook', 'created_at'))
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [])
+
+  async function remove(id: string) {
+    if (await deleteRow('wedding_guestbook', id, 'remove guestbook entry')) load()
+  }
+
+  if (loading) return <Empty>Loading…</Empty>
+  return (
+    <>
+      <p className="text-sm text-zinc-500 mb-4">
+        Entries guests leave on /guestbook, newest first. Anyone can sign it —
+        remove anything spammy or off-key here.
+      </p>
+      {items.length === 0 ? <Empty>No guestbook entries yet.</Empty> : (
+        <div className="space-y-3">
+          {[...items].reverse().map(item => (
+            <Panel key={item.id} className="space-y-2">
+              <p className="text-sm text-zinc-200">{item.message}</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] tracking-[0.15em] uppercase text-zinc-600">
+                  {item.name}
+                </p>
+                <button
+                  onClick={() => remove(item.id)}
+                  className="text-[10px] tracking-[0.15em] uppercase text-zinc-600 hover:text-rose-400 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            </Panel>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function Content() {
   const [view, setView] = useState<View>('story')
 
@@ -508,6 +555,7 @@ export default function Content() {
       {view === 'travel' && <TravelTab />}
       {view === 'gifts' && <GiftsTab />}
       {view === 'schedule' && <ScheduleTab />}
+      {view === 'guestbook' && <GuestbookTab />}
     </div>
   )
 }

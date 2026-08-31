@@ -52,7 +52,7 @@ publicly readable, no deploy needed to flip it:
 | `/registry` | `src/pages/RegistryPage.tsx` | Live — "Gifts" in the nav/UI (URL kept as `/registry` to avoid breaking links/`nav_visibility`); reads `wedding_settings.gift_message`, no store links |
 | `/faq` | `src/pages/FaqPage.tsx` | Live — reads `wedding_faq` |
 | `/photos` | `src/pages/PhotosPage.tsx` | Live — reads `wedding_photos`; not linked from `Nav.tsx`/`NAV_LINKS` yet (a call for the couple, not made here) |
-| `/guestbook` | `src/pages/GuestbookPage.tsx` | Placeholder |
+| `/guestbook` | `src/pages/GuestbookPage.tsx` | Live — reads/writes `wedding_guestbook`; entries public, delete is admin-only moderation at `/admin/content` → Guestbook |
 | `/admin` | `src/pages/admin/Dashboard.tsx` | Live — planner home, see below |
 | `/admin/guests` | `src/pages/admin/Guests.tsx` | Live — households, guests, side, addresses |
 | `/admin/seating` | `src/pages/admin/Seating.tsx` | Live — drag-and-drop floor plan |
@@ -65,7 +65,7 @@ publicly readable, no deploy needed to flip it:
 | `/admin/exports` | `src/pages/admin/Exports.tsx` | Live — addresses, catering, seating chart as copy/print text |
 | `/admin/settings` | `src/pages/admin/Settings.tsx` | Live — site status, wedding date, venue, RSVP deadline, meal options |
 
-Nav order: Our Story · Save the Date · Invite · RSVP · Schedule · Travel · Gifts · FAQ
+Nav order: Our Story · Save the Date · Invite · RSVP · Schedule · Travel · Gifts · FAQ · Guestbook
 
 ## Key files
 
@@ -288,6 +288,20 @@ Three spots, all edited at `/admin/content` → **Photos**:
 `/photos` itself is **not linked from `Nav.tsx`** (not in `NAV_LINKS`) — it
 was a placeholder page before this and adding it to the nav is a call for the
 couple, not made here. The route works by direct link regardless.
+
+### Guestbook (`/guestbook`, `wedding_guestbook`)
+
+Public sign-and-read guestbook — unlike the other content tables, this one is
+**public INSERT** too (guests write their own entries unauthenticated), not
+just public SELECT. RLS: `select using (true)`, `insert with check (true)`,
+`delete using (auth.role() = 'authenticated')` — no UPDATE policy, entries
+aren't editable once posted. `name`/`message` both have a `char_length`
+check constraint (1–100 / 1–1000) as a floor against empty or absurdly long
+spam, but there's no captcha or rate limit — moderation is manual, at
+`/admin/content` → **Guestbook** (delete only, newest first). `GuestbookPage.tsx`
+talks to `supabase` directly rather than through `planning.ts`, same reason as
+`RsvpPage.tsx`: it's on the public site and `planning.ts` assumes an
+authenticated caller.
 
 ### Banquet style (`wedding_settings.single_menu`)
 

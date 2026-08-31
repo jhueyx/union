@@ -312,6 +312,15 @@ export interface PhotoItem {
   position: number
 }
 
+/** Public guestbook entry — anyone can insert or read; delete is admin-only
+ *  moderation. See wedding_guestbook migration. */
+export interface GuestbookEntry {
+  id: string
+  name: string
+  message: string
+  created_at: string
+}
+
 export interface WeddingGift {
   id: string
   household_id: string | null
