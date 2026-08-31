@@ -1,6 +1,7 @@
 // Union — admin dashboard with live Supabase data and guest management.
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { insertRow, deleteRow } from '../../lib/planning'
 import { MEAL_CHOICES } from '../../data/mock'
 import { generateInviteCode } from '../../utils'
 import type { Household, Guest, Side } from '../../types'
@@ -110,46 +111,53 @@ export default function Dashboard() {
     }))
 
   // ── Mutations ──────────────────────────────────────────────
+  //
+  // These route through the planning.ts helpers rather than calling supabase
+  // directly, because supabase-js reports a rejected write in the result
+  // instead of throwing. Reading only `data` — which this page used to do —
+  // meant a failed insert cleared the form and closed it, so it looked exactly
+  // like success. The helpers surface the failure as a toast via AdminLayout,
+  // and the form now stays open with the entered values still in it.
   async function addHousehold() {
     if (!newHousehold.name.trim() || !newHousehold.invite_code.trim()) return
     setSavingHousehold(true)
-    await supabase.from('households').insert({
+    const row = await insertRow('households', {
       name: newHousehold.name.trim(),
       invite_code: newHousehold.invite_code.trim().toUpperCase(),
       max_guests: newHousehold.max_guests,
       notes: newHousehold.notes.trim() || null,
       side: newHousehold.side || null,
-    })
+    }, 'add household')
+    setSavingHousehold(false)
+    if (!row) return
     setNewHousehold(BLANK_HOUSEHOLD)
     setShowAddHousehold(false)
-    setSavingHousehold(false)
     await fetchAll()
   }
 
   async function deleteHousehold(id: string) {
-    await supabase.from('households').delete().eq('id', id)
-    await fetchAll()
+    if (await deleteRow('households', id, 'delete household')) await fetchAll()
   }
 
   async function addGuest(householdId: string) {
     if (!newGuest.first_name.trim() || !newGuest.last_name.trim()) return
     setSavingGuest(true)
-    await supabase.from('guests').insert({
+    const row = await insertRow('guests', {
       household_id: householdId,
       first_name: newGuest.first_name.trim(),
       last_name: newGuest.last_name.trim(),
       email: newGuest.email.trim() || null,
       is_child: newGuest.is_child,
-    })
+    }, 'add guest')
+    setSavingGuest(false)
+    if (!row) return
     setNewGuest(BLANK_GUEST)
     setAddingGuestTo(null)
-    setSavingGuest(false)
     await fetchAll()
   }
 
   async function deleteGuest(id: string) {
-    await supabase.from('guests').delete().eq('id', id)
-    await fetchAll()
+    if (await deleteRow('guests', id, 'remove guest')) await fetchAll()
   }
 
   if (loading) {

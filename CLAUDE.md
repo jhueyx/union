@@ -100,7 +100,7 @@ Three tables in `public`:
 - `id` uuid PK
 - `household_id` uuid FK → households (cascade delete)
 - `first_name`, `last_name` text
-- `phone` text nullable
+- `email`, `phone` text nullable
 - `is_child` boolean not null default false — children are counted and catered for separately
 - `created_at` timestamptz
 
@@ -151,6 +151,16 @@ so a kids' table is visible at a glance. No colour — the admin palette stays
 grayscale.
 
 Neither field is shown on the guest-facing site.
+
+## Admin writes must report failure
+
+supabase-js puts a rejected write in the result rather than throwing, so a
+caller that only reads `data` never learns it failed. Every admin mutation goes
+through `insertRow` / `updateRow` / `deleteRow` in `src/lib/planning.ts`, which
+surface the failure as a toast (the reporter is registered in `AdminLayout`).
+Never call `supabase.from(...).insert(...)` directly from an admin page — the
+`guests.email` column being absent went unnoticed for exactly this reason: the
+insert was rejected every time, the form cleared, and it looked like success.
 
 ## Supabase auth
 
