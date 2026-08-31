@@ -14,8 +14,9 @@ import {
   useDraggable, useDroppable, type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
 import {
-  fetchAll, insertRow, updateRow, deleteRow,
+  fetchAll, insertRow, updateRow, deleteRow, SIDE_LABEL,
   type Guest, type Household, type SeatAssignment, type WeddingTable, type RsvpResponse,
+  type Side,
 } from '../../lib/planning'
 import { PageHeader, Label, TextInput, Select, Btn, Empty } from '../../components/admin/AdminUI'
 
@@ -25,8 +26,12 @@ const CANVAS_H = 1000
 function GuestChip({ guest, seated }: { guest: Guest; seated?: boolean }) {
   return (
     <span
+      title={guest.is_child ? `${guest.first_name} ${guest.last_name} — child` : undefined}
       className={
         'inline-block px-2 py-1 rounded-[2px] text-xs whitespace-nowrap border ' +
+        // Children get a dashed edge rather than a colour: the admin palette is
+        // grayscale, and a kids' table is something you want to spot on sight.
+        (guest.is_child ? 'border-dashed ' : '') +
         (seated
           ? 'bg-zinc-900 border-zinc-800 text-zinc-300'
           : 'bg-zinc-900 border-zinc-700 text-zinc-200')
@@ -134,6 +139,7 @@ export default function Seating() {
   const [newShape, setNewShape] = useState<'round' | 'rect'>('round')
   const [newCap, setNewCap] = useState(8)
   const [attendingOnly, setAttendingOnly] = useState(true)
+  const [sideFilter, setSideFilter] = useState<Side | 'all'>('all')
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
@@ -152,6 +158,11 @@ export default function Seating() {
   const householdName = useMemo(() => {
     const m = new Map(households.map(h => [h.id, h.name]))
     return (g: Guest) => m.get(g.household_id) ?? ''
+  }, [households])
+
+  const sideOfGuest = useMemo(() => {
+    const m = new Map(households.map(h => [h.id, h.side]))
+    return (g: Guest) => m.get(g.household_id) ?? null
   }, [households])
 
   const attendingIds = useMemo(() => {
@@ -178,9 +189,17 @@ export default function Seating() {
 
   // Unseated tray. Defaults to confirmed attendees only — seating someone who
   // has declined is the most common way a chart goes wrong.
+  // 'Both' households show up under either side — they belong to the couple, so
+  // filtering to one family should not hide them.
   const unseated = useMemo(
-    () => guests.filter(g => !tableOf.has(g.id) && (!attendingOnly || attendingIds.has(g.id))),
-    [guests, tableOf, attendingOnly, attendingIds],
+    () => guests.filter(g => {
+      if (tableOf.has(g.id)) return false
+      if (attendingOnly && !attendingIds.has(g.id)) return false
+      if (sideFilter === 'all') return true
+      const side = sideOfGuest(g)
+      return side === sideFilter || side === 'both'
+    }),
+    [guests, tableOf, attendingOnly, attendingIds, sideFilter, sideOfGuest],
   )
 
   const { setNodeRef: trayRef, isOver: overTray } = useDroppable({ id: 'tray' })
@@ -312,6 +331,22 @@ export default function Seating() {
               />
               Attending only
             </label>
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {([['all', 'All'], ['bride', SIDE_LABEL.bride], ['groom', SIDE_LABEL.groom]] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setSideFilter(key)}
+                  className={
+                    'text-[10px] tracking-[0.15em] uppercase px-2 py-1 rounded-[2px] border transition-colors ' +
+                    (sideFilter === key
+                      ? 'border-zinc-500 text-zinc-50'
+                      : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {unseated.length === 0
                 ? <p className="text-xs text-zinc-600">Everyone is seated.</p>
@@ -323,7 +358,7 @@ export default function Seating() {
             </div>
             <p className="text-[10px] text-zinc-600 mt-4 leading-relaxed">
               Drag a name onto a table to seat them. Drag back here to unseat.
-              Drag a table to move it.
+              Drag a table to move it. A dashed outline marks a child.
             </p>
           </div>
         </div>

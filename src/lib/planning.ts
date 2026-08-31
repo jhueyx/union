@@ -5,6 +5,11 @@
 import { supabase } from './supabase'
 
 export type TableShape = 'round' | 'rect'
+/**
+ * Which family a household belongs to. Null while it is undecided; 'both' is
+ * for the people the couple share, who belong to neither list alone.
+ */
+export type Side = 'bride' | 'groom' | 'both'
 export type VendorStatus = 'considering' | 'booked' | 'declined'
 
 export interface WeddingTable {
@@ -30,6 +35,8 @@ export interface Guest {
   household_id: string
   first_name: string
   last_name: string
+  /** Children are counted and catered for separately from adults. */
+  is_child: boolean
 }
 
 export interface Household {
@@ -39,6 +46,7 @@ export interface Household {
   invite_code: string | null
   max_guests: number
   notes: string | null
+  side: Side | null
 }
 
 /**
@@ -147,6 +155,13 @@ export async function deleteRow(table: string, id: string, action: string): Prom
   const { error } = await supabase.from(table).delete().eq('id', id)
   if (error) { fail(action, error.message); return false }
   return true
+}
+
+/** Display labels for the sides. Undecided households render as "Unassigned". */
+export const SIDE_LABEL: Record<Side, string> = {
+  bride: 'Bride',
+  groom: 'Groom',
+  both: 'Both',
 }
 
 /** Money formatting used across budget views. */

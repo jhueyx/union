@@ -90,8 +90,9 @@ Three tables in `public`:
 **`households`** — one row per invited party
 - `id` uuid PK
 - `name` text (e.g. "The Johnson Family")
-- `invite_code` text unique (e.g. "AB7KQ2")
+- `invite_code` text unique (e.g. "AB7KQ2") — null until the invitation actually goes out
 - `max_guests` int
+- `side` text nullable — `'bride' | 'groom' | 'both'`, checked. Null means undecided. `'both'` is for people the couple share, and shows under either side when filtering.
 - `notes` text nullable
 - `created_at` timestamptz
 
@@ -99,7 +100,8 @@ Three tables in `public`:
 - `id` uuid PK
 - `household_id` uuid FK → households (cascade delete)
 - `first_name`, `last_name` text
-- `email`, `phone` text nullable
+- `phone` text nullable
+- `is_child` boolean not null default false — children are counted and catered for separately
 - `created_at` timestamptz
 
 **`rsvp_responses`** — one row per guest, unique on `guest_id`
@@ -122,9 +124,33 @@ Protected by Supabase auth. Login: `jason.huey1@gmail.com`.
 
 Features:
 - Live stats: total invited, RSVP'd, attending, not attending, pending, response rate
-- Guest list: add households (with auto-generated invite codes), add guests per household, delete either
+- Seats by side (bride / groom / both / unassigned) and an adults-vs-children split
+- Guest list: add households (with auto-generated invite codes and a side), add guests per household (with a child flag), delete either
 - Meal counts, dietary restrictions, song requests, guest notes — all live from Supabase
 - RSVP responses table
+
+## Side and children
+
+Every household carries a `side` — bride, groom, both, or undecided — and every
+guest carries `is_child`. Both are set in `/admin/guests`:
+
+- The household header has a Side dropdown; the add-household form at the top
+  carries a Side too, and it stays put between adds because households arrive in
+  family batches.
+- Each guest row has a `Child` toggle — lit means child, dim means adult. The
+  add-guest form has a Children checkbox that applies to the whole comma-separated
+  batch.
+- Filter chips scope the list to one side, or to households with no side yet.
+- The stats show seats per side. **Seats, not names**, is the figure the two
+  families compare — seats are what has been committed to, and named guests lag
+  behind while the list is still being built.
+
+`/admin/seating` picks both up: a bride/groom filter on the unseated tray (with
+`both` households showing under either), and a dashed chip outline for children
+so a kids' table is visible at a glance. No colour — the admin palette stays
+grayscale.
+
+Neither field is shown on the guest-facing site.
 
 ## Supabase auth
 

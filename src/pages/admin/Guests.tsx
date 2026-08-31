@@ -1,10 +1,15 @@
 // Guest list — households, their guests, and RSVP state in one place.
 import { useEffect, useMemo, useState } from 'react'
 import {
-  fetchAll, insertRow, updateRow, deleteRow, generateInviteCode,
-  type Guest, type Household, type RsvpResponse,
+  fetchAll, insertRow, updateRow, deleteRow, generateInviteCode, SIDE_LABEL,
+  type Guest, type Household, type RsvpResponse, type Side,
 } from '../../lib/planning'
-import { PageHeader, Panel, TextInput, Btn, Empty, Stat } from '../../components/admin/AdminUI'
+import { PageHeader, Panel, Label, TextInput, Select, Btn, Empty, Stat } from '../../components/admin/AdminUI'
+
+/** Side filter values — the three real sides plus households not yet assigned. */
+type SideFilter = 'all' | Side | 'unassigned'
+
+const SIDE_OPTIONS: Side[] = ['bride', 'groom', 'both']
 
 type Rsvp = RsvpResponse
 
@@ -15,9 +20,14 @@ export default function Guests() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [newHousehold, setNewHousehold] = useState('')
+  // Sticky between adds: households arrive in family batches, so the side you
+  // just picked is almost always the side of the next one.
+  const [newSide, setNewSide] = useState<Side | ''>('')
   const [addingTo, setAddingTo] = useState<string | null>(null)
   const [view, setView] = useState<'all' | 'draft' | 'invited'>('all')
+  const [sideView, setSideView] = useState<SideFilter>('all')
   const [newGuest, setNewGuest] = useState('')
+  const [newGuestIsChild, setNewGuestIsChild] = useState(false)
 
   async function load() {
     const [h, g, r] = await Promise.all([
@@ -52,6 +62,12 @@ export default function Guests() {
     invited: households.filter(h => h.invite_code).length,
   }), [households])
 
+  const sideCounts = useMemo(() => {
+    const n: Record<SideFilter, number> = { all: households.length, bride: 0, groom: 0, both: 0, unassigned: 0 }
+    for (const h of households) n[h.side ?? 'unassigned']++
+    return n
+  }, [households])
+
   const stats = useMemo(() => {
     let attending = 0, declined = 0
     for (const g of guests) {
@@ -72,14 +88,43 @@ export default function Guests() {
       attending,
       declined,
       pending: guests.length - attending - declined,
+      children: guests.filter(g => g.is_child).length,
+      adults: guests.filter(g => !g.is_child).length,
     }
   }, [guests, rsvpByGuest, households])
 
+  /**
+   * Seats and names per side. Seats are the figure the two families compare —
+   * they are what has actually been committed — while names lag behind while
+   * the list is still being built.
+   */
+  const bySide = useMemo(() => {
+    const blank = () => ({ seats: 0, named: 0, children: 0 })
+    const acc: Record<SideFilter, ReturnType<typeof blank>> = {
+      all: blank(), bride: blank(), groom: blank(), both: blank(), unassigned: blank(),
+    }
+    const sideOf = new Map<string, SideFilter>()
+    for (const h of households) {
+      const key: SideFilter = h.side ?? 'unassigned'
+      sideOf.set(h.id, key)
+      acc[key].seats += h.max_guests || 0
+    }
+    for (const g of guests) {
+      const key = sideOf.get(g.household_id)
+      if (!key) continue
+      acc[key].named++
+      if (g.is_child) acc[key].children++
+    }
+    return acc
+  }, [households, guests])
+
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const scoped = view === 'all' ? households
+    const byInvite = view === 'all' ? households
       : view === 'draft' ? households.filter(h => !h.invite_code)
       : households.filter(h => h.invite_code)
+    const scoped = sideView === 'all' ? byInvite
+      : byInvite.filter(h => (h.side ?? 'unassigned') === sideView)
     if (!q) return scoped
     return scoped.filter(h => {
       if (h.name.toLowerCase().includes(q)) return true
@@ -87,7 +132,7 @@ export default function Guests() {
       return (guestsByHousehold.get(h.id) ?? []).some(g =>
         `${g.first_name} ${g.last_name}`.toLowerCase().includes(q))
     })
-  }, [households, search, guestsByHousehold, view])
+  }, [households, search, guestsByHousehold, view, sideView])
 
   /**
    * New households start with no invite code. Building the list is a different
@@ -98,7 +143,7 @@ export default function Guests() {
     const name = newHousehold.trim()
     if (!name) return
     const row = await insertRow<Household>('households',
-      { name, invite_code: null, max_guests: 2 }, 'add household')
+      { name, invite_code: null, max_guests: 2, side: newSide || null }, 'add household')
     if (row) { setNewHousehold(''); load() }
   }
 
@@ -130,10 +175,12 @@ export default function Guests() {
         household_id: householdId,
         first_name: parts[0],
         last_name: parts.slice(1).join(' ') || '',
+        // Applies to the whole batch — children usually get entered together.
+        is_child: newGuestIsChild,
       }, 'add guest')
       if (row) added++
     }
-    if (added) { setNewGuest(''); setAddingTo(null); load() }
+    if (added) { setNewGuest(''); setNewGuestIsChild(false); setAddingTo(null); load() }
   }
 
   async function removeGuest(id: string) {
@@ -144,20 +191,53 @@ export default function Guests() {
     if (await updateRow('households', h.id, { max_guests: n }, 'update household')) load()
   }
 
+  /** Empty string from the select means undecided, which is stored as null. */
+  async function setSide(h: Household, value: string) {
+    const side = (value || null) as Side | null
+    if (await updateRow('households', h.id, { side }, 'set side')) load()
+  }
+
+  async function toggleChild(g: Guest) {
+    if (await updateRow('guests', g.id, { is_child: !g.is_child }, 'update guest')) load()
+  }
+
   if (loading) return <div className="max-w-[1200px] mx-auto px-6 py-12"><Empty>Loading…</Empty></div>
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-12">
       <PageHeader title="Guests" />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
         <Stat label="Households" value={stats.households} />
         <Stat label="Seats allotted" value={stats.allotted} />
+        <Stat label="Adults" value={stats.adults} />
+        <Stat label="Children" value={stats.children} />
         <Stat label="Named" value={stats.named} />
         <Stat label="Attending" value={stats.attending} accent="text-emerald-400" />
         <Stat label="Declined" value={stats.declined} accent="text-rose-400" />
         <Stat label="Pending" value={stats.pending} accent="text-amber-400" />
       </div>
+
+      {/* Seats per side — the figure the two families actually compare. */}
+      <Panel className="mb-4">
+        <Label>By side</Label>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {(['bride', 'groom', 'both', 'unassigned'] as const).map(key => {
+            const row = bySide[key]
+            return (
+              <div key={key}>
+                <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-1">
+                  {key === 'unassigned' ? 'Unassigned' : SIDE_LABEL[key]}
+                </p>
+                <p className="text-2xl font-[300] tabular-nums text-zinc-50">{row.seats}</p>
+                <p className="text-[10px] tracking-[0.15em] uppercase text-zinc-600 mt-1">
+                  {row.named} named{row.children > 0 && ` · ${row.children} child${row.children === 1 ? '' : 'ren'}`}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      </Panel>
 
       {stats.unnamed > 0 && (
         <p className="text-[10px] tracking-[0.15em] uppercase text-zinc-500 mb-10">
@@ -179,11 +259,21 @@ export default function Guests() {
             value={newHousehold}
             onChange={e => setNewHousehold(e.target.value)}
           />
+          <Select
+            value={newSide}
+            onChange={e => setNewSide(e.target.value as Side | '')}
+            aria-label="Side for new household"
+          >
+            <option value="">Side —</option>
+            {SIDE_OPTIONS.map(o => (
+              <option key={o} value={o}>{SIDE_LABEL[o]}</option>
+            ))}
+          </Select>
           <Btn variant="primary" type="submit">Add</Btn>
         </form>
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-3">
         {([
           ['all', 'All', counts.all],
           ['draft', 'Not invited', counts.draft],
@@ -200,6 +290,29 @@ export default function Guests() {
             }
           >
             {label} {n}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-6">
+        {([
+          ['all', 'Both sides'],
+          ['bride', SIDE_LABEL.bride],
+          ['groom', SIDE_LABEL.groom],
+          ['both', SIDE_LABEL.both],
+          ['unassigned', 'Unassigned'],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setSideView(key)}
+            className={
+              'text-[10px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-[2px] border transition-colors ' +
+              (sideView === key
+                ? 'border-zinc-500 text-zinc-50'
+                : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')
+            }
+          >
+            {label} {sideCounts[key]}
           </button>
         ))}
       </div>
@@ -234,6 +347,10 @@ export default function Guests() {
                       {h.invite_code
                         ? <>Code {h.invite_code}</>
                         : <span className="text-zinc-600">Not invited yet</span>}
+                      {' · '}
+                      {h.side
+                        ? SIDE_LABEL[h.side]
+                        : <span className="text-zinc-600">No side</span>}
                       {' · '}{list.length} of {h.max_guests} seats
                     </p>
                   </div>
@@ -241,6 +358,17 @@ export default function Guests() {
                     {!h.invite_code && (
                       <Btn onClick={() => issueCode(h)}>Generate code</Btn>
                     )}
+                    <Select
+                      value={h.side ?? ''}
+                      onChange={e => setSide(h, e.target.value)}
+                      aria-label="Side"
+                      className="py-1.5"
+                    >
+                      <option value="">Side —</option>
+                      {SIDE_OPTIONS.map(o => (
+                        <option key={o} value={o}>{SIDE_LABEL[o]}</option>
+                      ))}
+                    </Select>
                     <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-500">Max</span>
                     <TextInput
                       type="number"
@@ -264,6 +392,22 @@ export default function Guests() {
                         <li key={g.id} className="flex items-center justify-between py-1.5 border-b border-zinc-900 last:border-0">
                           <span className="text-sm text-zinc-300">{g.first_name} {g.last_name}</span>
                           <span className="flex items-center gap-4">
+                            {/* Lit means child, dim means adult — a toggle rather
+                                than a checkbox, so the row stays a single line
+                                and reads as a badge when it is on. */}
+                            <button
+                              onClick={() => toggleChild(g)}
+                              aria-pressed={g.is_child}
+                              title={g.is_child ? 'Mark as adult' : 'Mark as child'}
+                              className={
+                                'text-[10px] tracking-[0.15em] uppercase transition-colors ' +
+                                (g.is_child
+                                  ? 'text-zinc-200'
+                                  : 'text-zinc-700 hover:text-zinc-500')
+                              }
+                            >
+                              Child
+                            </button>
                             {r?.dietary_restrictions && (
                               <span className="text-[10px] uppercase tracking-[0.15em] text-zinc-500" title={r.dietary_restrictions}>
                                 dietary
@@ -286,20 +430,28 @@ export default function Guests() {
                 {addingTo === h.id ? (
                   <form
                     onSubmit={e => { e.preventDefault(); addGuest(h.id) }}
-                    className="flex gap-2"
+                    className="flex flex-wrap items-center gap-2"
                   >
                     <TextInput
                       autoFocus
                       placeholder="First Last, or several separated by commas"
                       value={newGuest}
                       onChange={e => setNewGuest(e.target.value)}
-                      onBlur={() => { if (!newGuest.trim()) setAddingTo(null) }}
-                      className="flex-1"
+                      className="flex-1 min-w-[220px]"
                     />
+                    <label className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase text-zinc-500 cursor-pointer whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={newGuestIsChild}
+                        onChange={e => setNewGuestIsChild(e.target.checked)}
+                      />
+                      Children
+                    </label>
                     <Btn variant="primary" type="submit">Save</Btn>
+                    <Btn type="button" onClick={() => setAddingTo(null)}>Cancel</Btn>
                   </form>
                 ) : (
-                  <Btn onClick={() => { setNewGuest(''); setAddingTo(h.id) }}>+ Add guest</Btn>
+                  <Btn onClick={() => { setNewGuest(''); setNewGuestIsChild(false); setAddingTo(h.id) }}>+ Add guest</Btn>
                 )}
               </Panel>
             )

@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MEAL_CHOICES } from '../../data/mock'
 import { generateInviteCode } from '../../utils'
-import type { Household, Guest } from '../../types'
+import type { Household, Guest, Side } from '../../types'
+
+const SIDE_LABELS: Record<Side, string> = { bride: 'Bride', groom: 'Groom', both: 'Both' }
 
 type HouseholdWithGuests = Household & { guests: Guest[] }
 
@@ -31,8 +33,8 @@ function StatCard({ label, value, accent }: { label: string; value: number; acce
   )
 }
 
-const BLANK_HOUSEHOLD = { name: '', invite_code: '', max_guests: 2, notes: '' }
-const BLANK_GUEST = { first_name: '', last_name: '', email: '' }
+const BLANK_HOUSEHOLD = { name: '', invite_code: '', max_guests: 2, notes: '', side: '' as Side | '' }
+const BLANK_GUEST = { first_name: '', last_name: '', email: '', is_child: false }
 
 export default function Dashboard() {
   const [households, setHouseholds] = useState<HouseholdWithGuests[]>([])
@@ -68,6 +70,15 @@ export default function Dashboard() {
   const notAttending = rsvps.filter((r) => !r.attending).length
   const pending = totalInvited - rsvpReceived
   const responseRate = totalInvited > 0 ? Math.round((rsvpReceived / totalInvited) * 100) : 0
+
+  const allGuests = households.flatMap((h) => h.guests ?? [])
+  const children = allGuests.filter((g) => g.is_child).length
+  const adults = allGuests.length - children
+
+  // Seats per side. Seats, not names, is what the two families compare — it is
+  // the number actually committed to.
+  const sideSeats: Record<Side | 'unassigned', number> = { bride: 0, groom: 0, both: 0, unassigned: 0 }
+  for (const h of households) sideSeats[h.side ?? 'unassigned'] += h.max_guests ?? 0
 
   const mealCounts: Record<string, number> = {}
   for (const r of rsvps) {
@@ -107,6 +118,7 @@ export default function Dashboard() {
       invite_code: newHousehold.invite_code.trim().toUpperCase(),
       max_guests: newHousehold.max_guests,
       notes: newHousehold.notes.trim() || null,
+      side: newHousehold.side || null,
     })
     setNewHousehold(BLANK_HOUSEHOLD)
     setShowAddHousehold(false)
@@ -127,6 +139,7 @@ export default function Dashboard() {
       first_name: newGuest.first_name.trim(),
       last_name: newGuest.last_name.trim(),
       email: newGuest.email.trim() || null,
+      is_child: newGuest.is_child,
     })
     setNewGuest(BLANK_GUEST)
     setAddingGuestTo(null)
@@ -175,6 +188,36 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
+          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-4">Seats by Side</p>
+          <ul className="space-y-2">
+            {(['bride', 'groom', 'both', 'unassigned'] as const).map((key) => (
+              <li key={key} className="flex items-center justify-between text-sm">
+                <span className="text-zinc-300">
+                  {key === 'unassigned' ? 'Unassigned' : SIDE_LABELS[key]}
+                </span>
+                <span className="tabular-nums text-zinc-50">{sideSeats[key]}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
+          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-4">Adults &amp; Children</p>
+          <ul className="space-y-2">
+            <li className="flex items-center justify-between text-sm">
+              <span className="text-zinc-300">Adults</span>
+              <span className="tabular-nums text-zinc-50">{adults}</span>
+            </li>
+            <li className="flex items-center justify-between text-sm">
+              <span className="text-zinc-300">Children</span>
+              <span className="tabular-nums text-zinc-50">{children}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
       {/* ── Guest List ── */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -220,6 +263,19 @@ export default function Dashboard() {
                     Regenerate
                   </button>
                 </div>
+              </div>
+              <div>
+                <label className="block text-[10px] tracking-[0.15em] uppercase text-zinc-600 mb-1">Side</label>
+                <select
+                  value={newHousehold.side}
+                  onChange={(e) => setNewHousehold((p) => ({ ...p, side: e.target.value as Side | '' }))}
+                  className="w-full bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
+                >
+                  <option value="" className="bg-zinc-900">Not decided</option>
+                  <option value="bride" className="bg-zinc-900">Bride</option>
+                  <option value="groom" className="bg-zinc-900">Groom</option>
+                  <option value="both" className="bg-zinc-900">Both</option>
+                </select>
               </div>
               <div>
                 <label className="block text-[10px] tracking-[0.15em] uppercase text-zinc-600 mb-1">Max Guests</label>
@@ -273,6 +329,11 @@ export default function Dashboard() {
                   <span className="ml-3 text-[10px] tracking-[0.15em] uppercase text-zinc-600 font-mono">
                     {h.invite_code}
                   </span>
+                  {h.side && (
+                    <span className="ml-3 text-[10px] tracking-[0.15em] uppercase text-zinc-500">
+                      {SIDE_LABELS[h.side]}
+                    </span>
+                  )}
                   {h.notes && (
                     <span className="ml-2 text-xs text-zinc-600"> · {h.notes}</span>
                   )}
@@ -303,6 +364,9 @@ export default function Dashboard() {
                     <div key={g.id} className="flex items-center justify-between px-5 py-2.5">
                       <span className="text-xs text-zinc-300">
                         {g.first_name} {g.last_name}
+                        {g.is_child && (
+                          <span className="ml-2 text-[10px] tracking-[0.15em] uppercase text-zinc-500">Child</span>
+                        )}
                         {g.email && <span className="text-zinc-600 ml-2">{g.email}</span>}
                       </span>
                       <button
@@ -341,6 +405,14 @@ export default function Dashboard() {
                       className="bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-zinc-400"
                     />
                   </div>
+                  <label className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase text-zinc-500 cursor-pointer w-fit">
+                    <input
+                      type="checkbox"
+                      checked={newGuest.is_child}
+                      onChange={(e) => setNewGuest((p) => ({ ...p, is_child: e.target.checked }))}
+                    />
+                    Child
+                  </label>
                   <div className="flex gap-3">
                     <button
                       onClick={() => addGuest(h.id)}

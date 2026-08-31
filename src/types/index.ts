@@ -9,6 +9,9 @@ export type SitePhase =
   | 'wedding-day'
   | 'archive'
 
+/** Which family a household belongs to; 'both' is for people the couple share. */
+export type Side = 'bride' | 'groom' | 'both'
+
 export interface Guest {
   id: string
   household_id: string
@@ -16,6 +19,8 @@ export interface Guest {
   last_name: string
   email?: string
   phone?: string
+  /** Children are counted and catered for separately from adults. */
+  is_child?: boolean
   created_at?: string
 }
 
@@ -25,6 +30,8 @@ export interface Household {
   invite_code: string
   max_guests: number
   notes?: string
+  /** Null while undecided. */
+  side?: Side | null
   created_at?: string
   guests?: Guest[]
 }
