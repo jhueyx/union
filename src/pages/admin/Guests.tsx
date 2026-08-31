@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   fetchAll, insertRow, updateRow, deleteRow, generateInviteCode, SIDE_LABEL,
+  hasAddress, addressLines,
   type Guest, type Household, type RsvpResponse, type Side,
 } from '../../lib/planning'
 import { PageHeader, Panel, Label, TextInput, Select, Btn, Empty, Stat } from '../../components/admin/AdminUI'
@@ -28,6 +29,7 @@ export default function Guests() {
   const [sideView, setSideView] = useState<SideFilter>('all')
   const [newGuest, setNewGuest] = useState('')
   const [newGuestIsChild, setNewGuestIsChild] = useState(false)
+  const [editingAddress, setEditingAddress] = useState<string | null>(null)
 
   async function load() {
     const [h, g, r] = await Promise.all([
@@ -90,6 +92,8 @@ export default function Guests() {
       pending: guests.length - attending - declined,
       children: guests.filter(g => g.is_child).length,
       adults: guests.filter(g => !g.is_child).length,
+      addressed: households.filter(hasAddress).length,
+      sent: households.filter(h => h.invitation_sent_at).length,
     }
   }, [guests, rsvpByGuest, households])
 
@@ -201,18 +205,33 @@ export default function Guests() {
     if (await updateRow('guests', g.id, { is_child: !g.is_child }, 'update guest')) load()
   }
 
+  async function saveAddress(h: Household, patch: Record<string, string>) {
+    const clean: Record<string, string | null> = {}
+    for (const [k, v] of Object.entries(patch)) clean[k] = v.trim() || null
+    if (await updateRow('households', h.id, clean, 'save address')) {
+      setEditingAddress(null); load()
+    }
+  }
+
+  /** Records that the invitation went out — a separate fact from having a code. */
+  async function toggleSent(h: Household) {
+    const invitation_sent_at = h.invitation_sent_at ? null : new Date().toISOString()
+    if (await updateRow('households', h.id, { invitation_sent_at }, 'update household')) load()
+  }
+
   if (loading) return <div className="max-w-[1200px] mx-auto px-6 py-12"><Empty>Loading…</Empty></div>
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-12">
       <PageHeader title="Guests" />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
         <Stat label="Households" value={stats.households} />
         <Stat label="Seats allotted" value={stats.allotted} />
         <Stat label="Adults" value={stats.adults} />
         <Stat label="Children" value={stats.children} />
-        <Stat label="Named" value={stats.named} />
+        <Stat label="Addressed" value={`${stats.addressed}/${stats.households}`} />
+        <Stat label="Invitations sent" value={`${stats.sent}/${stats.households}`} />
         <Stat label="Attending" value={stats.attending} accent="text-emerald-400" />
         <Stat label="Declined" value={stats.declined} accent="text-rose-400" />
         <Stat label="Pending" value={stats.pending} accent="text-amber-400" />
@@ -352,6 +371,8 @@ export default function Guests() {
                         ? SIDE_LABEL[h.side]
                         : <span className="text-zinc-600">No side</span>}
                       {' · '}{list.length} of {h.max_guests} seats
+                      {h.invitation_sent_at && <span className="text-emerald-400"> · Sent</span>}
+                      {!hasAddress(h) && <span className="text-zinc-600"> · No address</span>}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -427,6 +448,47 @@ export default function Guests() {
                   </ul>
                 )}
 
+                {editingAddress === h.id ? (
+                  <form
+                    onSubmit={e => {
+                      e.preventDefault()
+                      const f = new FormData(e.currentTarget)
+                      saveAddress(h, {
+                        address_line1: String(f.get('address_line1') ?? ''),
+                        address_line2: String(f.get('address_line2') ?? ''),
+                        city: String(f.get('city') ?? ''),
+                        state: String(f.get('state') ?? ''),
+                        postal_code: String(f.get('postal_code') ?? ''),
+                        country: String(f.get('country') ?? ''),
+                      })
+                    }}
+                    className="mb-3 space-y-2"
+                  >
+                    <TextInput autoFocus name="address_line1" defaultValue={h.address_line1 ?? ''} placeholder="Street address" className="w-full" />
+                    <TextInput name="address_line2" defaultValue={h.address_line2 ?? ''} placeholder="Apartment, suite (optional)" className="w-full" />
+                    <div className="flex flex-wrap gap-2">
+                      <TextInput name="city" defaultValue={h.city ?? ''} placeholder="City" className="flex-1 min-w-[140px]" />
+                      <TextInput name="state" defaultValue={h.state ?? ''} placeholder="State" className="w-24" />
+                      <TextInput name="postal_code" defaultValue={h.postal_code ?? ''} placeholder="ZIP" className="w-28" />
+                      <TextInput name="country" defaultValue={h.country ?? ''} placeholder="Country (if not US)" className="flex-1 min-w-[140px]" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Btn variant="primary" type="submit">Save address</Btn>
+                      <Btn type="button" onClick={() => setEditingAddress(null)}>Cancel</Btn>
+                    </div>
+                  </form>
+                ) : hasAddress(h) ? (
+                  <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+                    {addressLines(h).join(' · ')}
+                    <button
+                      onClick={() => setEditingAddress(h.id)}
+                      className="ml-3 text-[10px] tracking-[0.15em] uppercase text-zinc-600 hover:text-zinc-300 transition-colors"
+                    >
+                      Edit
+                    </button>
+                  </p>
+                ) : null}
+
                 {addingTo === h.id ? (
                   <form
                     onSubmit={e => { e.preventDefault(); addGuest(h.id) }}
@@ -451,7 +513,15 @@ export default function Guests() {
                     <Btn type="button" onClick={() => setAddingTo(null)}>Cancel</Btn>
                   </form>
                 ) : (
-                  <Btn onClick={() => { setNewGuest(''); setNewGuestIsChild(false); setAddingTo(h.id) }}>+ Add guest</Btn>
+                  <div className="flex flex-wrap gap-2">
+                    <Btn onClick={() => { setNewGuest(''); setNewGuestIsChild(false); setAddingTo(h.id) }}>+ Add guest</Btn>
+                    {!hasAddress(h) && editingAddress !== h.id && (
+                      <Btn onClick={() => setEditingAddress(h.id)}>+ Address</Btn>
+                    )}
+                    <Btn onClick={() => toggleSent(h)}>
+                      {h.invitation_sent_at ? 'Mark not sent' : 'Mark invitation sent'}
+                    </Btn>
+                  </div>
                 )}
               </Panel>
             )

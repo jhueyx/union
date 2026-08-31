@@ -22,6 +22,8 @@ import Checklist from '../pages/admin/Checklist'
 import Timeline from '../pages/admin/Timeline'
 import Budget from '../pages/admin/Budget'
 import Vendors from '../pages/admin/Vendors'
+import Settings from '../pages/admin/Settings'
+import Exports from '../pages/admin/Exports'
 
 export const router = createBrowserRouter([
   {
@@ -54,6 +56,8 @@ export const router = createBrowserRouter([
       { path: 'timeline', element: <Timeline /> },
       { path: 'budget', element: <Budget /> },
       { path: 'vendors', element: <Vendors /> },
+      { path: 'exports', element: <Exports /> },
+      { path: 'settings', element: <Settings /> },
     ],
   },
 ])

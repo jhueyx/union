@@ -1,550 +1,324 @@
-// Union — admin dashboard with live Supabase data and guest management.
-import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { insertRow, deleteRow } from '../../lib/planning'
-import { MEAL_CHOICES } from '../../data/mock'
-import { generateInviteCode } from '../../utils'
-import type { Household, Guest, Side } from '../../types'
-
-const SIDE_LABELS: Record<Side, string> = { bride: 'Bride', groom: 'Groom', both: 'Both' }
-
-type HouseholdWithGuests = Household & { guests: Guest[] }
-
-type RsvpRow = {
-  id: string
-  household_id: string
-  guest_id: string
-  attending: boolean
-  meal_choice_id: string | null
-  dietary_restrictions: string | null
-  song_request: string | null
-  notes: string | null
-  submitted_at: string
-  guests: { first_name: string; last_name: string } | null
-}
-
-function StatCard({ label, value, accent }: { label: string; value: number; accent?: string }) {
-  return (
-    <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
-      <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-3">{label}</p>
-      <p className={['text-3xl font-[300] tabular-nums', accent ?? 'text-zinc-50'].join(' ')}>
-        {value}
-      </p>
-    </div>
-  )
-}
-
-const BLANK_HOUSEHOLD = { name: '', invite_code: '', max_guests: 2, notes: '', side: '' as Side | '' }
-const BLANK_GUEST = { first_name: '', last_name: '', email: '', is_child: false }
+// Union — planner home.
+//
+// This used to duplicate the Guests page (household list, add/delete guest)
+// and report nothing the other pages didn't already show. Guests already owns
+// that job. This page's job is different: pull one number from each module —
+// checklist, budget, seats, RSVPs — and put them next to each other, because
+// none of those pages can see the others. "16 seats over capacity" and "$182
+// per head" are only visible from here.
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  fetchAll, fetchSettings, money, SIDE_LABEL, hasAddress,
+  daysUntil, relativeDay, formatDay, toISODay, today as todayDate, shiftDay,
+  type Household, type Guest, type RsvpResponse, type WeddingTask,
+  type BudgetItem, type WeddingTable, type SeatAssignment, type WeddingSettings,
+} from '../../lib/planning'
+import { PageHeader, Panel, Label, Stat, Empty } from '../../components/admin/AdminUI'
 
 export default function Dashboard() {
-  const [households, setHouseholds] = useState<HouseholdWithGuests[]>([])
-  const [rsvps, setRsvps] = useState<RsvpRow[]>([])
+  const [settings, setSettings] = useState<WeddingSettings | null>(null)
+  const [households, setHouseholds] = useState<Household[]>([])
+  const [guests, setGuests] = useState<Guest[]>([])
+  const [rsvps, setRsvps] = useState<RsvpResponse[]>([])
+  const [tasks, setTasks] = useState<WeddingTask[]>([])
+  const [budget, setBudget] = useState<BudgetItem[]>([])
+  const [tables, setTables] = useState<WeddingTable[]>([])
+  const [seats, setSeats] = useState<SeatAssignment[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Add household form
-  const [showAddHousehold, setShowAddHousehold] = useState(false)
-  const [newHousehold, setNewHousehold] = useState(BLANK_HOUSEHOLD)
-  const [savingHousehold, setSavingHousehold] = useState(false)
-
-  // Add guest form — keyed by household id
-  const [addingGuestTo, setAddingGuestTo] = useState<string | null>(null)
-  const [newGuest, setNewGuest] = useState(BLANK_GUEST)
-  const [savingGuest, setSavingGuest] = useState(false)
-
-  async function fetchAll() {
-    const [{ data: hh }, { data: rv }] = await Promise.all([
-      supabase.from('households').select('*, guests(*)').order('created_at', { ascending: true }),
-      supabase.from('rsvp_responses').select('*, guests(first_name, last_name)').order('submitted_at', { ascending: false }),
-    ])
-    setHouseholds((hh ?? []) as HouseholdWithGuests[])
-    setRsvps((rv ?? []) as RsvpRow[])
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchAll() }, [])
-
-  // ── Stats ──────────────────────────────────────────────────
-  const totalInvited = households.reduce((sum, h) => sum + (h.guests?.length ?? 0), 0)
-  const rsvpReceived = new Set(rsvps.map((r) => r.guest_id)).size
-  const attending = rsvps.filter((r) => r.attending).length
-  const notAttending = rsvps.filter((r) => !r.attending).length
-  const pending = totalInvited - rsvpReceived
-  const responseRate = totalInvited > 0 ? Math.round((rsvpReceived / totalInvited) * 100) : 0
-
-  const allGuests = households.flatMap((h) => h.guests ?? [])
-  const children = allGuests.filter((g) => g.is_child).length
-  const adults = allGuests.length - children
-
-  // Seats per side. Seats, not names, is what the two families compare — it is
-  // the number actually committed to.
-  const sideSeats: Record<Side | 'unassigned', number> = { bride: 0, groom: 0, both: 0, unassigned: 0 }
-  for (const h of households) sideSeats[h.side ?? 'unassigned'] += h.max_guests ?? 0
-
-  const mealCounts: Record<string, number> = {}
-  for (const r of rsvps) {
-    if (r.attending && r.meal_choice_id) {
-      mealCounts[r.meal_choice_id] = (mealCounts[r.meal_choice_id] ?? 0) + 1
-    }
-  }
-  const mealLabel = (id: string) => MEAL_CHOICES.find((m) => m.id === id)?.label ?? id
-
-  const dietaryFlags = rsvps
-    .filter((r) => r.dietary_restrictions?.trim())
-    .map((r) => {
-      const name = r.guests ? `${r.guests.first_name} ${r.guests.last_name}` : 'Guest'
-      return `${name}: ${r.dietary_restrictions}`
+  useEffect(() => {
+    Promise.all([
+      fetchSettings(),
+      fetchAll<Household>('households'),
+      fetchAll<Guest>('guests'),
+      fetchAll<RsvpResponse>('rsvp_responses'),
+      fetchAll<WeddingTask>('wedding_tasks'),
+      fetchAll<BudgetItem>('wedding_budget'),
+      fetchAll<WeddingTable>('wedding_tables'),
+      fetchAll<SeatAssignment>('wedding_seat_assignments'),
+    ]).then(([se, h, g, r, t, b, tb, sa]) => {
+      setSettings(se); setHouseholds(h); setGuests(g); setRsvps(r)
+      setTasks(t); setBudget(b); setTables(tb); setSeats(sa)
+      setLoading(false)
     })
+  }, [])
 
-  const songRequests = rsvps
-    .filter((r) => r.song_request?.trim())
-    .map((r) => ({
-      song: r.song_request as string,
-      guestName: r.guests ? `${r.guests.first_name} ${r.guests.last_name}` : 'Guest',
-    }))
+  const iso = toISODay(todayDate())
+  const date = settings?.wedding_date ?? null
 
-  const guestNotes = rsvps
-    .filter((r) => r.notes?.trim())
-    .map((r) => ({
-      note: r.notes as string,
-      who: r.guests ? `${r.guests.first_name} ${r.guests.last_name}` : 'Guest',
-    }))
+  // ── Guests & RSVPs ──
+  const seatsAllotted = households.reduce((n, h) => n + (h.max_guests || 0), 0)
+  const named = guests.length
+  const attending = rsvps.filter(r => r.attending === true).length
+  const declined = rsvps.filter(r => r.attending === false).length
+  const responded = rsvps.filter(r => r.guest_id && r.attending !== null).length
+  const responseRate = named > 0 ? Math.round((responded / named) * 100) : 0
 
-  // ── Mutations ──────────────────────────────────────────────
-  //
-  // These route through the planning.ts helpers rather than calling supabase
-  // directly, because supabase-js reports a rejected write in the result
-  // instead of throwing. Reading only `data` — which this page used to do —
-  // meant a failed insert cleared the form and closed it, so it looked exactly
-  // like success. The helpers surface the failure as a toast via AdminLayout,
-  // and the form now stays open with the entered values still in it.
-  async function addHousehold() {
-    if (!newHousehold.name.trim() || !newHousehold.invite_code.trim()) return
-    setSavingHousehold(true)
-    const row = await insertRow('households', {
-      name: newHousehold.name.trim(),
-      invite_code: newHousehold.invite_code.trim().toUpperCase(),
-      max_guests: newHousehold.max_guests,
-      notes: newHousehold.notes.trim() || null,
-      side: newHousehold.side || null,
-    }, 'add household')
-    setSavingHousehold(false)
-    if (!row) return
-    setNewHousehold(BLANK_HOUSEHOLD)
-    setShowAddHousehold(false)
-    await fetchAll()
-  }
+  const bySide = useMemo(() => {
+    const acc: Record<'bride' | 'groom' | 'both' | 'unassigned', number> = { bride: 0, groom: 0, both: 0, unassigned: 0 }
+    for (const h of households) acc[h.side ?? 'unassigned'] += h.max_guests || 0
+    return acc
+  }, [households])
 
-  async function deleteHousehold(id: string) {
-    if (await deleteRow('households', id, 'delete household')) await fetchAll()
-  }
+  // ── Checklist ──
+  const openTasks = tasks.filter(t => !t.done)
+  const overdue = openTasks.filter(t => t.due_date && t.due_date < iso)
+  const dueSoon = openTasks
+    .filter(t => t.due_date && t.due_date >= iso && t.due_date <= shiftDay(iso, 30))
+    .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
 
-  async function addGuest(householdId: string) {
-    if (!newGuest.first_name.trim() || !newGuest.last_name.trim()) return
-    setSavingGuest(true)
-    const row = await insertRow('guests', {
-      household_id: householdId,
-      first_name: newGuest.first_name.trim(),
-      last_name: newGuest.last_name.trim(),
-      email: newGuest.email.trim() || null,
-      is_child: newGuest.is_child,
-    }, 'add guest')
-    setSavingGuest(false)
-    if (!row) return
-    setNewGuest(BLANK_GUEST)
-    setAddingGuestTo(null)
-    await fetchAll()
-  }
+  // ── Budget ──
+  const budgetTotals = useMemo(() => {
+    let est = 0, act = 0, paid = 0
+    for (const i of budget) {
+      est += Number(i.estimated) || 0
+      const a = Number(i.actual) || 0
+      act += a
+      if (i.paid) paid += a
+    }
+    return { est, act, paid, outstanding: act - paid }
+  }, [budget])
+  const spent = budgetTotals.act || budgetTotals.est
+  const perHead = seatsAllotted > 0 ? spent / seatsAllotted : 0
 
-  async function deleteGuest(id: string) {
-    if (await deleteRow('guests', id, 'remove guest')) await fetchAll()
-  }
+  // ── Seating ──
+  const capacity = tables.reduce((n, t) => n + (t.capacity || 0), 0)
+  const seatedCount = seats.length
+  const overCapacity = capacity > 0 && seatsAllotted > capacity
 
-  if (loading) {
-    return (
-      <div className="max-w-[900px] mx-auto px-6 py-12">
-        <p className="text-xs tracking-[0.2em] uppercase text-zinc-600">Loading…</p>
-      </div>
-    )
-  }
+  // ── Addresses ──
+  const addressed = households.filter(hasAddress).length
+  const sent = households.filter(h => h.invitation_sent_at).length
+
+  // ── RSVP extras ── Free text nobody else on the site surfaces: Guests shows
+  // only a "dietary" tag, and song requests / guest notes have nowhere else to
+  // land.
+  const nameOf = useMemo(() => new Map(guests.map(g => [g.id, `${g.first_name} ${g.last_name}`.trim()])), [guests])
+  const songRequests = rsvps.filter(r => r.guest_id && r.song_request?.trim())
+  const rsvpNotes = rsvps.filter(r => r.guest_id && r.notes?.trim())
+
+  if (loading) return <div className="max-w-[1100px] mx-auto px-6 py-12"><Empty>Loading…</Empty></div>
 
   return (
-    <div className="max-w-[900px] mx-auto px-6 py-12 space-y-10">
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-xl font-[300] tracking-[0.1em] text-zinc-50">Union — Admin</h1>
-        <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-600">
-          Last updated {new Date().toLocaleString('en-US')}
-        </span>
-      </div>
+    <div className="max-w-[1100px] mx-auto px-6 py-12 space-y-8">
+      <PageHeader
+        title="Union"
+        action={
+          date ? (
+            <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-500">
+              {formatDay(date)} · {relativeDay(date)}
+            </span>
+          ) : (
+            <Link to="/admin/settings" className="text-[10px] tracking-[0.15em] uppercase text-amber-400 hover:text-amber-300">
+              Set the wedding date →
+            </Link>
+          )
+        }
+      />
 
-      {/* ── Stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <StatCard label="Total Invited" value={totalInvited} />
-        <StatCard label="RSVP'd" value={rsvpReceived} />
-        <StatCard label="Attending" value={attending} accent="text-emerald-400" />
-        <StatCard label="Not Attending" value={notAttending} accent="text-rose-400" />
-        <StatCard label="Pending" value={pending} accent="text-amber-400" />
-      </div>
+      {/* ── The day ── */}
+      {date && (
+        <Panel className="flex items-baseline justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-4xl font-[300] tabular-nums text-zinc-50">
+              {Math.max(0, daysUntil(date))}
+            </p>
+            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mt-1">
+              {daysUntil(date) >= 0 ? 'days to go' : `${relativeDay(date)}`}
+            </p>
+          </div>
+          <div className="flex gap-8">
+            <div className="text-right">
+              <p className="text-xl font-[300] tabular-nums text-zinc-50">{responseRate}%</p>
+              <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500">responded</p>
+            </div>
+            <div className="text-right">
+              <p className={'text-xl font-[300] tabular-nums ' + (overdue.length ? 'text-rose-400' : 'text-zinc-50')}>
+                {overdue.length}
+              </p>
+              <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500">overdue tasks</p>
+            </div>
+          </div>
+        </Panel>
+      )}
 
-      <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500">Response Rate</p>
-          <span className="text-sm tabular-nums text-zinc-300">{responseRate}%</span>
+      {/* ── Numbers only this page can compare ── */}
+      <div>
+        <Label>At a glance</Label>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Stat label="Seats allotted" value={seatsAllotted} />
+          <Stat
+            label="Table capacity"
+            value={capacity || '—'}
+            accent={overCapacity ? 'text-rose-400' : undefined}
+          />
+          <Stat label="Attending" value={attending} accent="text-emerald-400" />
+          <Stat label="Declined" value={declined} accent="text-rose-400" />
+          <Stat label="Cost per head" value={perHead > 0 ? money(perHead) : '—'} />
+          <Stat
+            label="Budget outstanding"
+            value={budgetTotals.outstanding > 0 ? money(budgetTotals.outstanding) : '—'}
+            accent={budgetTotals.outstanding > 0 ? 'text-amber-400' : undefined}
+          />
+          <Stat label="Addressed" value={`${addressed}/${households.length}`} />
+          <Stat label="Invitations sent" value={`${sent}/${households.length}`} />
         </div>
-        <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
-          <div className="h-full bg-zinc-50 rounded-full transition-all" style={{ width: `${responseRate}%` }} />
-        </div>
+        {overCapacity && (
+          <p className="text-[10px] tracking-[0.15em] uppercase text-rose-400 mt-3">
+            {seatsAllotted - capacity} more {seatsAllotted - capacity === 1 ? 'seat is' : 'seats are'} allotted
+            than the floor plan holds — add table capacity or trim the list.
+          </p>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-4">Seats by Side</p>
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* ── Song requests & notes ── The only place these surface; Guests
+            shows just a "dietary" tag. */}
+        {(songRequests.length > 0 || rsvpNotes.length > 0) && (
+          <Panel className="md:col-span-2">
+            <div className="flex items-baseline justify-between mb-4">
+              <Label>From RSVPs</Label>
+              <Link to="/admin/guests" className="text-[10px] tracking-[0.15em] uppercase text-zinc-500 hover:text-zinc-300">
+                Guests →
+              </Link>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-2">Song requests</p>
+                {songRequests.length === 0 ? (
+                  <p className="text-sm text-zinc-600">None yet.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {songRequests.map((r, i) => (
+                      <li key={i} className="text-sm text-zinc-300">
+                        {r.song_request}
+                        <span className="text-zinc-600"> — {nameOf.get(r.guest_id!) ?? 'Guest'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-2">Notes</p>
+                {rsvpNotes.length === 0 ? (
+                  <p className="text-sm text-zinc-600">None yet.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {rsvpNotes.map((r, i) => (
+                      <li key={i} className="text-sm">
+                        <span className="text-zinc-300 italic">"{r.notes}"</span>
+                        <span className="text-zinc-600"> — {nameOf.get(r.guest_id!) ?? 'Guest'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </Panel>
+        )}
+
+        {/* ── Checklist ── */}
+        <Panel>
+          <div className="flex items-baseline justify-between mb-4">
+            <Label>Coming up</Label>
+            <Link to="/admin/checklist" className="text-[10px] tracking-[0.15em] uppercase text-zinc-500 hover:text-zinc-300">
+              Checklist →
+            </Link>
+          </div>
+          {overdue.length === 0 && dueSoon.length === 0 ? (
+            <p className="text-sm text-zinc-600">
+              {tasks.length === 0 ? 'No tasks yet.' : 'Nothing due in the next 30 days.'}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {[...overdue, ...dueSoon].slice(0, 6).map(t => (
+                <li key={t.id} className="flex items-center justify-between text-sm gap-3">
+                  <span className="text-zinc-300 truncate">{t.title}</span>
+                  <span className={'text-[10px] tracking-[0.15em] uppercase whitespace-nowrap ' +
+                    (t.due_date && t.due_date < iso ? 'text-rose-400' : 'text-zinc-500')}>
+                    {t.due_date ? relativeDay(t.due_date) : '—'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        {/* ── Seats by side ── */}
+        <Panel>
+          <div className="flex items-baseline justify-between mb-4">
+            <Label>Seats by side</Label>
+            <Link to="/admin/guests" className="text-[10px] tracking-[0.15em] uppercase text-zinc-500 hover:text-zinc-300">
+              Guests →
+            </Link>
+          </div>
           <ul className="space-y-2">
-            {(['bride', 'groom', 'both', 'unassigned'] as const).map((key) => (
+            {(['bride', 'groom', 'both', 'unassigned'] as const).map(key => (
               <li key={key} className="flex items-center justify-between text-sm">
-                <span className="text-zinc-300">
-                  {key === 'unassigned' ? 'Unassigned' : SIDE_LABELS[key]}
-                </span>
-                <span className="tabular-nums text-zinc-50">{sideSeats[key]}</span>
+                <span className="text-zinc-300">{key === 'unassigned' ? 'Unassigned' : SIDE_LABEL[key]}</span>
+                <span className="tabular-nums text-zinc-50">{bySide[key]}</span>
               </li>
             ))}
           </ul>
-        </div>
+        </Panel>
 
-        <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-4">Adults &amp; Children</p>
-          <ul className="space-y-2">
-            <li className="flex items-center justify-between text-sm">
-              <span className="text-zinc-300">Adults</span>
-              <span className="tabular-nums text-zinc-50">{adults}</span>
-            </li>
-            <li className="flex items-center justify-between text-sm">
-              <span className="text-zinc-300">Children</span>
-              <span className="tabular-nums text-zinc-50">{children}</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      {/* ── Guest List ── */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500">Guest List</p>
-          <button
-            onClick={() => {
-              setNewHousehold({ ...BLANK_HOUSEHOLD, invite_code: generateInviteCode() })
-              setShowAddHousehold(true)
-            }}
-            className="text-[10px] tracking-[0.15em] uppercase text-zinc-400 hover:text-zinc-50 transition-colors"
-          >
-            + Add Household
-          </button>
-        </div>
-
-        {/* Add household form */}
-        {showAddHousehold && (
-          <div className="border border-zinc-700 rounded-[2px] p-5 bg-zinc-900 mb-4 space-y-4">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500">New Household</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] tracking-[0.15em] uppercase text-zinc-600 mb-1">Household Name</label>
-                <input
-                  value={newHousehold.name}
-                  onChange={(e) => setNewHousehold((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="e.g. The Johnson Family"
-                  className="w-full bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-zinc-400"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] tracking-[0.15em] uppercase text-zinc-600 mb-1">Invite Code</label>
-                <div className="flex gap-2 items-center">
-                  <input
-                    value={newHousehold.invite_code}
-                    onChange={(e) => setNewHousehold((p) => ({ ...p, invite_code: e.target.value.toUpperCase() }))}
-                    className="flex-1 bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-zinc-400 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setNewHousehold((p) => ({ ...p, invite_code: generateInviteCode() }))}
-                    className="text-[10px] tracking-[0.1em] uppercase text-zinc-600 hover:text-zinc-400 whitespace-nowrap"
-                  >
-                    Regenerate
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] tracking-[0.15em] uppercase text-zinc-600 mb-1">Side</label>
-                <select
-                  value={newHousehold.side}
-                  onChange={(e) => setNewHousehold((p) => ({ ...p, side: e.target.value as Side | '' }))}
-                  className="w-full bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
-                >
-                  <option value="" className="bg-zinc-900">Not decided</option>
-                  <option value="bride" className="bg-zinc-900">Bride</option>
-                  <option value="groom" className="bg-zinc-900">Groom</option>
-                  <option value="both" className="bg-zinc-900">Both</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] tracking-[0.15em] uppercase text-zinc-600 mb-1">Max Guests</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={newHousehold.max_guests}
-                  onChange={(e) => setNewHousehold((p) => ({ ...p, max_guests: Number(e.target.value) }))}
-                  className="w-full bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] tracking-[0.15em] uppercase text-zinc-600 mb-1">Notes (optional)</label>
-                <input
-                  value={newHousehold.notes}
-                  onChange={(e) => setNewHousehold((p) => ({ ...p, notes: e.target.value }))}
-                  placeholder="e.g. Wheelchair accessible seating needed"
-                  className="w-full bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-zinc-400"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={addHousehold}
-                disabled={savingHousehold}
-                className="text-[10px] tracking-[0.15em] uppercase px-4 py-2 bg-zinc-50 text-zinc-900 rounded-[2px] hover:bg-white disabled:opacity-50"
-              >
-                {savingHousehold ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                onClick={() => setShowAddHousehold(false)}
-                className="text-[10px] tracking-[0.15em] uppercase text-zinc-600 hover:text-zinc-300"
-              >
-                Cancel
-              </button>
-            </div>
+        {/* ── Budget ── */}
+        <Panel>
+          <div className="flex items-baseline justify-between mb-4">
+            <Label>Budget</Label>
+            <Link to="/admin/budget" className="text-[10px] tracking-[0.15em] uppercase text-zinc-500 hover:text-zinc-300">
+              Budget →
+            </Link>
           </div>
-        )}
-
-        {households.length === 0 && !showAddHousehold && (
-          <p className="text-sm text-zinc-600">No households yet. Add one to get started.</p>
-        )}
-
-        <div className="space-y-3">
-          {households.map((h) => (
-            <div key={h.id} className="border border-zinc-800 rounded-[2px] bg-zinc-950">
-              {/* Household header */}
-              <div className="flex items-center justify-between px-5 py-4">
-                <div>
-                  <span className="text-sm text-zinc-100">{h.name}</span>
-                  <span className="ml-3 text-[10px] tracking-[0.15em] uppercase text-zinc-600 font-mono">
-                    {h.invite_code}
-                  </span>
-                  {h.side && (
-                    <span className="ml-3 text-[10px] tracking-[0.15em] uppercase text-zinc-500">
-                      {SIDE_LABELS[h.side]}
-                    </span>
-                  )}
-                  {h.notes && (
-                    <span className="ml-2 text-xs text-zinc-600"> · {h.notes}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-zinc-600">
-                    {h.guests?.length ?? 0}/{h.max_guests} guests
-                  </span>
-                  <button
-                    onClick={() => { setAddingGuestTo(h.id); setNewGuest(BLANK_GUEST) }}
-                    className="text-[10px] tracking-[0.1em] uppercase text-zinc-500 hover:text-zinc-300 transition-colors"
-                  >
-                    + Guest
-                  </button>
-                  <button
-                    onClick={() => deleteHousehold(h.id)}
-                    className="text-[10px] tracking-[0.1em] uppercase text-zinc-700 hover:text-rose-400 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-
-              {/* Guest rows */}
-              {(h.guests ?? []).length > 0 && (
-                <div className="border-t border-zinc-800 divide-y divide-zinc-900">
-                  {h.guests!.map((g) => (
-                    <div key={g.id} className="flex items-center justify-between px-5 py-2.5">
-                      <span className="text-xs text-zinc-300">
-                        {g.first_name} {g.last_name}
-                        {g.is_child && (
-                          <span className="ml-2 text-[10px] tracking-[0.15em] uppercase text-zinc-500">Child</span>
-                        )}
-                        {g.email && <span className="text-zinc-600 ml-2">{g.email}</span>}
-                      </span>
-                      <button
-                        onClick={() => deleteGuest(g.id)}
-                        className="text-[10px] tracking-[0.1em] uppercase text-zinc-700 hover:text-rose-400 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add guest form */}
-              {addingGuestTo === h.id && (
-                <div className="border-t border-zinc-800 px-5 py-4 bg-zinc-900 space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
-                    <input
-                      autoFocus
-                      value={newGuest.first_name}
-                      onChange={(e) => setNewGuest((p) => ({ ...p, first_name: e.target.value }))}
-                      placeholder="First name"
-                      className="bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-zinc-400"
-                    />
-                    <input
-                      value={newGuest.last_name}
-                      onChange={(e) => setNewGuest((p) => ({ ...p, last_name: e.target.value }))}
-                      placeholder="Last name"
-                      className="bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-zinc-400"
-                    />
-                    <input
-                      value={newGuest.email}
-                      onChange={(e) => setNewGuest((p) => ({ ...p, email: e.target.value }))}
-                      placeholder="Email (optional)"
-                      type="email"
-                      className="bg-transparent border-b border-zinc-700 py-1.5 text-sm text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-zinc-400"
-                    />
-                  </div>
-                  <label className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase text-zinc-500 cursor-pointer w-fit">
-                    <input
-                      type="checkbox"
-                      checked={newGuest.is_child}
-                      onChange={(e) => setNewGuest((p) => ({ ...p, is_child: e.target.checked }))}
-                    />
-                    Child
-                  </label>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => addGuest(h.id)}
-                      disabled={savingGuest}
-                      className="text-[10px] tracking-[0.15em] uppercase px-4 py-2 bg-zinc-50 text-zinc-900 rounded-[2px] hover:bg-white disabled:opacity-50"
-                    >
-                      {savingGuest ? 'Adding…' : 'Add'}
-                    </button>
-                    <button
-                      onClick={() => setAddingGuestTo(null)}
-                      className="text-[10px] tracking-[0.15em] uppercase text-zinc-600 hover:text-zinc-300"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Meal & dietary ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-4">Meal Counts</p>
-          {Object.keys(mealCounts).length === 0 ? (
-            <p className="text-sm text-zinc-600">No meals selected yet.</p>
+          {budget.length === 0 ? (
+            <p className="text-sm text-zinc-600">No budget items yet.</p>
           ) : (
-            <ul className="space-y-2">
-              {Object.entries(mealCounts).map(([id, count]) => (
-                <li key={id} className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-300">{mealLabel(id)}</span>
-                  <span className="tabular-nums text-zinc-50">{count}</span>
-                </li>
-              ))}
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-center justify-between">
+                <span className="text-zinc-300">Estimated</span>
+                <span className="tabular-nums text-zinc-50">{money(budgetTotals.est)}</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="text-zinc-300">Actual</span>
+                <span className="tabular-nums text-zinc-50">{money(budgetTotals.act)}</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="text-zinc-300">Paid</span>
+                <span className="tabular-nums text-zinc-50">{money(budgetTotals.paid)}</span>
+              </li>
             </ul>
           )}
-        </div>
+        </Panel>
 
-        <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-4">Dietary Restrictions</p>
-          {dietaryFlags.length === 0 ? (
-            <p className="text-sm text-zinc-600">None reported.</p>
-          ) : (
-            <ul className="space-y-2">
-              {dietaryFlags.map((flag, i) => (
-                <li key={i} className="text-sm text-zinc-300">{flag}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-4">Song Requests</p>
-          {songRequests.length === 0 ? (
-            <p className="text-sm text-zinc-600">No requests yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {songRequests.map((s, i) => (
-                <li key={i} className="text-sm">
-                  <span className="text-zinc-300">{s.song}</span>
-                  <span className="text-zinc-600"> — {s.guestName}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="border border-zinc-800 rounded-[2px] p-5 bg-zinc-950">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-4">Guest Notes</p>
-          {guestNotes.length === 0 ? (
-            <p className="text-sm text-zinc-600">No notes yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {guestNotes.map((n, i) => (
-                <li key={i} className="text-sm">
-                  <span className="text-zinc-300 italic">"{n.note}"</span>
-                  <span className="block text-[10px] tracking-[0.15em] uppercase text-zinc-600 mt-1">— {n.who}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-
-      {/* ── RSVP Responses ── */}
-      {rsvps.length > 0 && (
-        <div>
-          <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-4">RSVP Responses</p>
-          <div className="border border-zinc-800 rounded-[2px] overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800 text-[10px] tracking-[0.15em] uppercase text-zinc-600">
-                  <th className="text-left px-4 py-3 font-normal">Guest</th>
-                  <th className="text-left px-4 py-3 font-normal">Status</th>
-                  <th className="text-left px-4 py-3 font-normal hidden md:table-cell">Meal</th>
-                  <th className="text-left px-4 py-3 font-normal hidden md:table-cell">Submitted</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-900">
-                {rsvps.map((r) => (
-                  <tr key={r.id} className="bg-zinc-950">
-                    <td className="px-4 py-3 text-zinc-200">
-                      {r.guests ? `${r.guests.first_name} ${r.guests.last_name}` : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={r.attending ? 'text-emerald-400' : 'text-rose-400'}>
-                        {r.attending ? 'Attending' : 'Regrets'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">
-                      {r.meal_choice_id ? mealLabel(r.meal_choice_id) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">
-                      {new Date(r.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* ── Seating ── */}
+        <Panel>
+          <div className="flex items-baseline justify-between mb-4">
+            <Label>Seating</Label>
+            <Link to="/admin/seating" className="text-[10px] tracking-[0.15em] uppercase text-zinc-500 hover:text-zinc-300">
+              Seating →
+            </Link>
           </div>
-        </div>
-      )}
+          {tables.length === 0 ? (
+            <p className="text-sm text-zinc-600">No tables yet.</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-center justify-between">
+                <span className="text-zinc-300">Tables</span>
+                <span className="tabular-nums text-zinc-50">{tables.length}</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="text-zinc-300">Capacity</span>
+                <span className="tabular-nums text-zinc-50">{capacity}</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="text-zinc-300">Seated</span>
+                <span className="tabular-nums text-zinc-50">{seatedCount}</span>
+              </li>
+            </ul>
+          )}
+        </Panel>
+      </div>
     </div>
   )
 }

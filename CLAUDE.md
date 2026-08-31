@@ -53,7 +53,15 @@ export const SITE_MODE: SiteMode = 'coming-soon' // or 'live'
 | `/faq` | `src/pages/FaqPage.tsx` | Empty state shown — needs `FAQ_ITEMS` filled in |
 | `/photos` | `src/pages/PhotosPage.tsx` | Placeholder |
 | `/guestbook` | `src/pages/GuestbookPage.tsx` | Placeholder |
-| `/admin` | `src/pages/admin/Dashboard.tsx` | Live — Supabase auth + guest management |
+| `/admin` | `src/pages/admin/Dashboard.tsx` | Live — planner home, see below |
+| `/admin/guests` | `src/pages/admin/Guests.tsx` | Live — households, guests, side, addresses |
+| `/admin/seating` | `src/pages/admin/Seating.tsx` | Live — drag-and-drop floor plan |
+| `/admin/checklist` | `src/pages/admin/Checklist.tsx` | Live — seeds from `CHECKLIST_TEMPLATE` once a date is set |
+| `/admin/timeline` | `src/pages/admin/Timeline.tsx` | Live — day-of running order |
+| `/admin/budget` | `src/pages/admin/Budget.tsx` | Live — estimates vs. actuals |
+| `/admin/vendors` | `src/pages/admin/Vendors.tsx` | Live — considering/booked/declined |
+| `/admin/exports` | `src/pages/admin/Exports.tsx` | Live — addresses, catering, seating chart as copy/print text |
+| `/admin/settings` | `src/pages/admin/Settings.tsx` | Live — wedding date, venue, RSVP deadline, meal options |
 
 Nav order: Our Story · Save the Date · Invite · RSVP · Schedule · Travel · Registry · FAQ
 
@@ -75,9 +83,12 @@ Nav order: Our Story · Save the Date · Invite · RSVP · Schedule · Travel ·
 
 ## static content in `src/data/mock.ts`
 
-All five arrays are currently empty. Fill them in when details are confirmed:
+Four arrays are currently empty. Fill them in when details are confirmed. Meal
+choices used to be a fifth (`MEAL_CHOICES`) — that one moved to the
+`wedding_meals` table, managed at `/admin/settings`, because a hardcoded empty
+array meant the RSVP meal step had nothing to offer and RSVP could not be
+completed. See "The planner" below.
 
-- `MEAL_CHOICES` — menu options guests pick during RSVP (`id`, `label`, `description`, `dietaryTags`)
 - `FAQ_ITEMS` — accordion FAQ (`id`, `category`, `question`, `answer`)
 - `TRAVEL_RECOMMENDATIONS` — hotels + transport (`type: 'hotel' | 'transport'`, `name`, `address`, `url`, `note`, `priceRange`, `bookingCode`)
 - `REGISTRY_LINKS` — store name + URL (`id`, `store`, `url`, `note`)
@@ -85,7 +96,7 @@ All five arrays are currently empty. Fill them in when details are confirmed:
 
 ## Supabase schema
 
-Three tables in `public`:
+Core tables in `public` (the planner adds several more — see "The planner" below):
 
 **`households`** — one row per invited party
 - `id` uuid PK
@@ -93,6 +104,8 @@ Three tables in `public`:
 - `invite_code` text unique (e.g. "AB7KQ2") — null until the invitation actually goes out
 - `max_guests` int
 - `side` text nullable — `'bride' | 'groom' | 'both'`, checked. Null means undecided. `'both'` is for people the couple share, and shows under either side when filtering.
+- `address_line1`, `address_line2`, `city`, `state`, `postal_code`, `country` text nullable — mailing address, entered in `/admin/guests`
+- `invitation_sent_at` timestamptz nullable — separate fact from having an invite code; a code being minted doesn't mean it went in the mail
 - `notes` text nullable
 - `created_at` timestamptz
 
@@ -108,7 +121,7 @@ Three tables in `public`:
 - `id` uuid PK
 - `household_id`, `guest_id` uuid FK
 - `attending` boolean
-- `meal_choice_id` text (matches IDs in `MEAL_CHOICES`)
+- `meal_choice_id` text (matches an id in `wedding_meals`)
 - `dietary_restrictions`, `song_request`, `notes` text nullable
 - `submitted_at` timestamptz
 
@@ -118,16 +131,81 @@ Three tables in `public`:
 
 Guests can re-submit their RSVP to update it — uses `upsert` with `onConflict: 'guest_id'`.
 
-## Admin dashboard (`/admin`)
+## Admin (`/admin`)
 
-Protected by Supabase auth. Login: `jason.huey1@gmail.com`.
+Protected by Supabase auth (all of `/admin/*`). Login: `jason.huey1@gmail.com`.
 
-Features:
-- Live stats: total invited, RSVP'd, attending, not attending, pending, response rate
-- Seats by side (bride / groom / both / unassigned) and an adults-vs-children split
-- Guest list: add households (with auto-generated invite codes and a side), add guests per household (with a child flag), delete either
-- Meal counts, dietary restrictions, song requests, guest notes — all live from Supabase
-- RSVP responses table
+`/admin` itself is the **planner home** — not a guest list. It pulls one number
+from each module and puts them next to each other, because no single module
+can see the others: days to the wedding, seats allotted vs. table capacity
+(flags red when over), cost per head, budget outstanding, response rate,
+overdue/upcoming checklist tasks, seats by side, and — since nowhere else
+surfaces them — RSVP song requests and notes. Guest and household management
+lives at `/admin/guests`, not here; don't reintroduce it on the Dashboard.
+
+## The planner
+
+Six more tables back the planning suite, all admin-only (RLS requires
+`auth.role() = 'authenticated'`) except where noted, all accessed through
+`src/lib/planning.ts` (see "Admin writes must report failure" below):
+
+- **`wedding_settings`** — one row, `id = true` enforced by a check constraint.
+  `wedding_date`, `ceremony_time`, `venue_name`, `venue_address`,
+  `rsvp_deadline`, `guest_target`, `notes`. This is the fixed point the whole
+  planner measures from — without a date the checklist can't say what's
+  overdue and the Dashboard can't show days-to-go. Set at `/admin/settings`.
+  **Does not drive the public site** — `src/config.ts` does, and the two are
+  not wired together (see below).
+- **`wedding_meals`** — meal options for the RSVP flow. `id` (slug), `label`,
+  `description`, `dietary_tags[]`, `is_child_meal`, `position`. Publicly
+  readable (guests need it during RSVP, which is unauthenticated), admin-only
+  to write. Managed at `/admin/settings`. `RsvpPage.tsx` fetches this directly
+  from Supabase rather than through `planning.ts`, since it's on the public
+  site.
+- **`wedding_tasks`** — the checklist. Seeded from `CHECKLIST_TEMPLATE` in
+  `src/lib/checklistTemplate.ts`, a ~55-item standard wedding list expressed as
+  day-offsets before the wedding (`{ days: 90, title: '...', category: '...' }`).
+  Seeding is additive and keyed on title — safe to re-run after the date moves
+  or after adding tasks by hand; it tops up rather than replaces.
+- **`wedding_timeline`** — day-of running order. Times are stored as a bare
+  `time`, not a timestamp — the schedule is relative to the day, not a timezone.
+- **`wedding_budget`** — line items, `estimated`/`actual`/`paid`, optionally
+  tied to a vendor.
+- **`wedding_vendors`** — directory, `status: considering | booked | declined`.
+- **`wedding_tables`** / **`wedding_seat_assignments`** — the seating floor
+  plan (already existed before this section was written up).
+
+### Date math
+
+`src/lib/planning.ts` has the date helpers everything above uses:
+`parseDay`/`toISODay` (parse and format a bare `'YYYY-MM-DD'` in **local**
+time — `new Date('2027-05-08')` parses as UTC midnight, which reads as the
+previous day anywhere west of Greenwich), `daysUntil`, `shiftDay`,
+`relativeDay` ("in 3 weeks" / "2 days ago"), `formatDay`. Use these rather than
+hand-rolling date math against the bare-date columns.
+
+### Exports (`/admin/exports`)
+
+Three copy/print views built from the live data — no CSV download, since a
+downloaded file lands in a folder and is never seen again, while these get
+pasted into an email or printed:
+- **Addresses** — one block per household with an address, name(s) plus the
+  mailing address, for a calligrapher or label sheet.
+- **Catering** — headcount (adults/children), meal counts by
+  `wedding_meals.label`, dietary requirements. Falls back to *everyone
+  invited* until any RSVP has come in, rather than reading zero.
+- **Seating chart** — one section per table with who's seated, from the same
+  data as `/admin/seating`.
+
+### `src/config.ts` is still separate
+
+The guest-facing site (`Hero`, `Nav`, `Details`, `Rsvp`, `Schedule`, `Travel`,
+`Registry` sections, `Invitation`, `SaveTheDate`) reads `WEDDING`/`WEDDING_DATE`
+from `config.ts` synchronously in about a dozen components — it is **not**
+wired to `wedding_settings`. `/admin/settings` has a "For the public site"
+panel that generates the exact lines to paste into `config.ts` from what's
+saved in `wedding_settings`, so the two don't drift silently. Copy it in and
+deploy when details are final; don't assume changing one changes the other.
 
 ## Side and children
 
@@ -196,13 +274,14 @@ No manual `vercel --prod` needed. `vercel.json` has a catch-all rewrite for Reac
 
 ## What still needs to be done before going live
 
-1. Fill in `src/config.ts` — date, venue, dress code, RSVP deadline, countdown date
-2. Fill in `src/data/mock.ts` — meal choices, FAQs, travel, registry, events
-3. Add engagement photo to Story page (`src/pages/StoryPage.tsx`) and Save the Date (`src/pages/SaveTheDate.tsx`)
-4. Write the real story in `src/pages/StoryPage.tsx` (three placeholder sections)
-5. Add guests via `/admin`
-6. Set custom domain `sallyjason.com` in Vercel dashboard
-7. Flip `SITE_MODE` to `'live'` in `src/config.ts`
+1. Set the wedding date and venue at `/admin/settings`, then paste the generated lines into `src/config.ts` (see "`src/config.ts` is still separate")
+2. Add meal options at `/admin/settings` — RSVP can't be completed without at least one
+3. Fill in `src/data/mock.ts` — FAQs, travel, registry, events
+4. Add engagement photo to Story page (`src/pages/StoryPage.tsx`) and Save the Date (`src/pages/SaveTheDate.tsx`)
+5. Write the real story in `src/pages/StoryPage.tsx` (three placeholder sections)
+6. Add guests via `/admin/guests`; addresses if invitations are going out by mail
+7. Set custom domain `sallyjason.com` in Vercel dashboard
+8. Flip `SITE_MODE` to `'live'` in `src/config.ts`
 
 ## Commit and push after every change
 

@@ -1,8 +1,24 @@
 // Union — multi-step RSVP flow backed by Supabase.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { MEAL_CHOICES } from '../data/mock'
 import type { Household, Guest } from '../types'
+
+// Meal options live in wedding_meals (managed at /admin/settings), not in
+// static data — an empty static array here used to mean the meal step had
+// nothing to offer and RSVP could never actually be completed.
+interface MealOption {
+  id: string
+  label: string
+  description: string | null
+}
+
+async function loadMeals(): Promise<MealOption[]> {
+  const { data } = await supabase
+    .from('wedding_meals')
+    .select('id, label, description')
+    .order('position', { ascending: true })
+  return (data ?? []) as MealOption[]
+}
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 
@@ -50,6 +66,8 @@ async function lookupHousehold(query: string): Promise<HouseholdWithGuests | nul
 
 export default function RsvpPage() {
   const [step, setStep] = useState<Step>('lookup')
+  const [meals, setMeals] = useState<MealOption[]>([])
+  useEffect(() => { loadMeals().then(setMeals) }, [])
   const [query, setQuery] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -238,7 +256,7 @@ export default function RsvpPage() {
                   Meal Selection
                 </p>
                 <div className="space-y-2 mb-5">
-                  {MEAL_CHOICES.map((meal) => (
+                  {meals.map((meal) => (
                     <label key={meal.id} className="flex items-start gap-3 cursor-pointer group">
                       <span
                         className={[
@@ -329,7 +347,7 @@ export default function RsvpPage() {
               Your Responses
             </p>
             {guestStates.map((gs) => {
-              const meal = MEAL_CHOICES.find((m) => m.id === gs.mealChoiceId)
+              const meal = meals.find((m) => m.id === gs.mealChoiceId)
               return (
                 <div key={gs.guest.id} className="flex items-center justify-between text-sm">
                   <span className="text-zinc-900">
