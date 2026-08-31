@@ -330,6 +330,8 @@ export interface WeddingGift {
   currency: string
   note: string | null
   received_at: string | null
+  /** When a thank-you note went out for this gift. Null means still owed. */
+  thank_you_sent_at: string | null
 }
 
 /** Table size assumed when no floor plan exists yet to average from. */

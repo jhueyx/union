@@ -20,6 +20,7 @@ export default function Checklist() {
   const [showDone, setShowDone] = useState(false)
   const [settings, setSettings] = useState<WeddingSettings | null>(null)
   const [seeding, setSeeding] = useState(false)
+  const [rebasing, setRebasing] = useState(false)
 
   async function load() {
     const [rows, s] = await Promise.all([
@@ -65,6 +66,38 @@ export default function Checklist() {
       })
     await insertRows('wedding_tasks', rows, 'seed checklist')
     setSeeding(false)
+    load()
+  }
+
+  /**
+   * Re-date open standard tasks against the current wedding date. seed() only
+   * tops up titles that are missing, so a task already in the list keeps
+   * whatever due date it got the day it was seeded — if the wedding date
+   * moves (or was unset and just got set again), those due dates go stale
+   * and can misreport tasks as overdue. This walks every open task that
+   * matches a template title and recomputes its due date the same way seed()
+   * does. Done tasks and hand-added tasks (no template match) are untouched.
+   */
+  async function rebase() {
+    const date = settings?.wedding_date
+    if (!date) return
+    setRebasing(true)
+    const templateByTitle = new Map(
+      CHECKLIST_TEMPLATE.map(t => [t.title.trim().toLowerCase(), t]),
+    )
+    const iso = toISODay(todayDate())
+    const changed = tasks
+      .filter(t => !t.done)
+      .map(t => {
+        const tpl = templateByTitle.get(t.title.trim().toLowerCase())
+        if (!tpl) return null
+        const due = shiftDay(date, -tpl.days)
+        const newDue = due < iso ? iso : due
+        return newDue !== t.due_date ? { id: t.id, due_date: newDue } : null
+      })
+      .filter((x): x is { id: string; due_date: string } => x !== null)
+    await Promise.all(changed.map(c => updateRow('wedding_tasks', c.id, { due_date: c.due_date }, 'rebase task due date')))
+    setRebasing(false)
     load()
   }
 
@@ -121,9 +154,16 @@ export default function Checklist() {
                 : 'Top the list up with any standard tasks that are missing. Existing tasks are left alone.'}
             </p>
           </div>
-          <Btn variant="primary" onClick={seed} disabled={seeding}>
-            {seeding ? 'Adding…' : stats.total === 0 ? 'Seed checklist' : 'Add missing'}
-          </Btn>
+          <div className="flex gap-2">
+            {stats.total > 0 && (
+              <Btn onClick={rebase} disabled={rebasing} title="Re-date open standard tasks against the current wedding date">
+                {rebasing ? 'Rebasing…' : 'Rebase due dates'}
+              </Btn>
+            )}
+            <Btn variant="primary" onClick={seed} disabled={seeding}>
+              {seeding ? 'Adding…' : stats.total === 0 ? 'Seed checklist' : 'Add missing'}
+            </Btn>
+          </div>
         </Panel>
       ) : (
         <Panel className="mb-6">

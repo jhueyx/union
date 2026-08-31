@@ -5,7 +5,7 @@
 // invitation), so there's a free-text fallback rather than forcing a match.
 import { useEffect, useMemo, useState } from 'react'
 import {
-  fetchAll, insertRow, deleteRow, money,
+  fetchAll, insertRow, updateRow, deleteRow, money,
   type Household, type WeddingGift,
 } from '../../lib/planning'
 import { PageHeader, Panel, Label, TextInput, Select, Btn, Empty, Stat } from '../../components/admin/AdminUI'
@@ -68,6 +68,15 @@ export default function Gifts() {
     if (await deleteRow('wedding_gifts', id, 'remove gift')) load()
   }
 
+  async function toggleThanked(g: WeddingGift) {
+    const value = g.thank_you_sent_at ? null : new Date().toISOString()
+    setGifts(gs => gs.map(x => (x.id === g.id ? { ...x, thank_you_sent_at: value } : x)))
+    const ok = await updateRow('wedding_gifts', g.id, { thank_you_sent_at: value }, 'update thank-you status')
+    if (!ok) load()
+  }
+
+  const owed = useMemo(() => gifts.filter(g => !g.thank_you_sent_at).length, [gifts])
+
   if (loading) return <div className="max-w-[900px] mx-auto px-6 py-12"><Empty>Loading…</Empty></div>
 
   return (
@@ -76,6 +85,7 @@ export default function Gifts() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-10">
         <Stat label="Logged" value={gifts.length} />
+        <Stat label="Thank-yous owed" value={owed} accent={owed ? 'text-amber-400' : 'text-emerald-400'} />
         {byCurrency.length === 0 ? (
           <Stat label="Total" value="—" />
         ) : (
@@ -144,6 +154,15 @@ export default function Gifts() {
                   <span className="text-sm tabular-nums text-zinc-50">
                     {g.amount != null ? (g.currency === 'USD' ? money(g.amount) : `${g.amount.toLocaleString()} ${g.currency}`) : '—'}
                   </span>
+                  <button
+                    onClick={() => toggleThanked(g)}
+                    className={
+                      'text-[10px] tracking-[0.15em] uppercase transition-colors ' +
+                      (g.thank_you_sent_at ? 'text-emerald-400 hover:text-emerald-300' : 'text-zinc-600 hover:text-zinc-300')
+                    }
+                  >
+                    {g.thank_you_sent_at ? 'Thanked' : 'Mark thanked'}
+                  </button>
                   <button
                     onClick={() => remove(g.id)}
                     className="text-[10px] tracking-[0.15em] uppercase text-zinc-600 hover:text-rose-400 transition-colors"

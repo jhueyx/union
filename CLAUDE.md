@@ -166,8 +166,14 @@ Seven more tables back the planning suite, all admin-only (RLS requires
   `src/lib/checklistTemplate.ts`, a ~60-item standard wedding list (including a
   Tea Ceremony thread — see below) expressed as day-offsets before the wedding
   (`{ days: 90, title: '...', category: '...' }`). Seeding is additive and
-  keyed on title — safe to re-run after the date moves or after adding tasks
-  by hand; it tops up rather than replaces.
+  keyed on title, safe to re-run after adding tasks by hand — it tops up
+  rather than replaces. **It does not re-date tasks that already exist**,
+  though, so if the wedding date moves after seeding, existing standard tasks
+  keep their old due dates rather than following it. Use **Rebase due dates**
+  on `/admin/checklist` for that: it recomputes every open (not done) task
+  whose title matches a template entry against the current date, the same
+  `shiftDay(date, -days)` clamped-to-today formula seed() uses — hand-added
+  tasks and done tasks are left alone.
 - **`wedding_timeline`** — day-of running order. Times are stored as a bare
   `time`, not a timestamp — the schedule is relative to the day, not a timezone.
 - **`wedding_budget`** — line items, `estimated`/`actual`/`paid`, optionally
@@ -177,8 +183,11 @@ Seven more tables back the planning suite, all admin-only (RLS requires
   with a `given_by` text fallback (a gift can arrive from someone not on the
   guest list), `amount`, `currency` (defaults `'USD'`, free entry — sums are
   grouped per currency rather than blindly added together), `note`,
-  `received_at`. Fully admin-only, no public policy — this is money. Managed
-  at `/admin/gifts`; totalled on the Dashboard.
+  `received_at`, `thank_you_sent_at` (nullable — null means still owed,
+  toggled via the "Mark thanked" / "Thanked" button per row, tallied as
+  "Thank-yous owed" alongside the currency totals). Fully admin-only, no
+  public policy — this is money. Managed at `/admin/gifts`; totalled on the
+  Dashboard.
 - **`wedding_tables`** / **`wedding_seat_assignments`** — the seating floor
   plan (already existed before this section was written up).
 
