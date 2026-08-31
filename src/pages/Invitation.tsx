@@ -72,7 +72,7 @@ export default function Invitation() {
       <div className="flex flex-wrap items-center justify-center gap-4">
         <Link to="/rsvp" className={PRIMARY_BTN}>RSVP</Link>
         <Link to="/travel" className={SECONDARY_BTN}>Travel Info</Link>
-        <Link to="/registry" className={SECONDARY_BTN}>Registry</Link>
+        <Link to="/registry" className={SECONDARY_BTN}>Gifts</Link>
       </div>
     </div>
   )

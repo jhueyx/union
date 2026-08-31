@@ -38,7 +38,7 @@ export const NAV_LINKS = [
   { label: 'RSVP', to: '/rsvp' },
   { label: 'Schedule', to: '/schedule' },
   { label: 'Travel', to: '/travel' },
-  { label: 'Registry', to: '/registry' },
+  { label: 'Gifts', to: '/registry' },
   { label: 'FAQ', to: '/faq' },
 ]
 
