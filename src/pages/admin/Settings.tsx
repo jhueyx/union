@@ -7,11 +7,13 @@ import {
   fetchAll, insertRow, deleteRow,
   type WeddingSettings, type MealOption, type SiteMode,
 } from '../../lib/planning'
+import { DEFAULT_COMING_SOON_MESSAGE } from '../../lib/siteContent'
 import { PageHeader, Panel, Label, TextInput, Btn, Empty } from '../../components/admin/AdminUI'
 
 type Draft = {
   site_mode: SiteMode
   couple_names: string
+  coming_soon_message: string
   wedding_date: string
   ceremony_time: string
   venue_name: string
@@ -24,8 +26,11 @@ type Draft = {
   single_menu: boolean
 }
 
+const DEFAULT_COMING_SOON_TEXT = DEFAULT_COMING_SOON_MESSAGE.join('\n')
+
 const EMPTY: Draft = {
   site_mode: 'coming-soon', couple_names: 'Sally & Jason',
+  coming_soon_message: DEFAULT_COMING_SOON_TEXT,
   wedding_date: '', ceremony_time: '', venue_name: '',
   venue_address: '', venue_city: '', venue_maps_url: '', dress_code: '',
   rsvp_deadline: '', guest_target: '', single_menu: false,
@@ -35,6 +40,7 @@ function toDraft(s: WeddingSettings): Draft {
   return {
     site_mode: s.site_mode,
     couple_names: s.couple_names || 'Sally & Jason',
+    coming_soon_message: s.coming_soon_message ?? DEFAULT_COMING_SOON_TEXT,
     wedding_date: s.wedding_date ?? '',
     // Postgres hands back "17:00:00"; <input type="time"> wants "17:00".
     ceremony_time: (s.ceremony_time ?? '').slice(0, 5),
@@ -109,6 +115,9 @@ export default function Settings() {
     const ok = await saveSettings({
       site_mode: draft.site_mode,
       couple_names: draft.couple_names.trim() || 'Sally & Jason',
+      coming_soon_message: draft.coming_soon_message.trim() === DEFAULT_COMING_SOON_TEXT.trim()
+        ? null
+        : draft.coming_soon_message.trim() || null,
       wedding_date: draft.wedding_date || null,
       ceremony_time: draft.ceremony_time || null,
       venue_name: draft.venue_name.trim() || null,
@@ -138,31 +147,48 @@ export default function Settings() {
 
       {/* Gates the entire public site. Publicly readable, so this takes
           effect the moment it's saved — no deploy, no waiting on Vercel. */}
-      <Panel className="flex items-start justify-between gap-4">
-        <div>
-          <Label>Site status</Label>
-          <p className="text-sm text-zinc-400">
-            {draft.site_mode === 'live'
-              ? 'The full site is live — nav, story, RSVP, everything below.'
-              : 'Guests see only the coming-soon landing page. Nav is hidden.'}
-          </p>
+      <Panel className="space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label>Site status</Label>
+            <p className="text-sm text-zinc-400">
+              {draft.site_mode === 'live'
+                ? 'The full site is live — nav, story, RSVP, everything below.'
+                : 'Guests see only the coming-soon landing page below. Nav is hidden.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {(['coming-soon', 'live'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setDraft(d => ({ ...d, site_mode: m }))}
+                className={
+                  'text-[10px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-[2px] border transition-colors ' +
+                  (draft.site_mode === m
+                    ? 'border-zinc-500 text-zinc-50'
+                    : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')
+                }
+              >
+                {m === 'live' ? 'Live' : 'Coming soon'}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {(['coming-soon', 'live'] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => setDraft(d => ({ ...d, site_mode: m }))}
-              className={
-                'text-[10px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-[2px] border transition-colors ' +
-                (draft.site_mode === m
-                  ? 'border-zinc-500 text-zinc-50'
-                  : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')
-              }
-            >
-              {m === 'live' ? 'Live' : 'Coming soon'}
-            </button>
-          ))}
-        </div>
+
+        {draft.site_mode === 'coming-soon' && (
+          <div>
+            <Label>Coming-soon message</Label>
+            <p className="text-sm text-zinc-400 mb-3">
+              What guests see under the SJ monogram right now. One paragraph per line.
+            </p>
+            <textarea
+              value={draft.coming_soon_message}
+              onChange={e => setDraft(d => ({ ...d, coming_soon_message: e.target.value }))}
+              rows={4}
+              className="w-full bg-transparent border border-zinc-800 rounded-[2px] px-3 py-2 text-sm text-zinc-50 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors resize-y"
+            />
+          </div>
+        )}
       </Panel>
 
       {date ? (

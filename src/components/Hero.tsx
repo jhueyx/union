@@ -2,7 +2,7 @@ import { useSiteContent } from '../lib/siteContent'
 import Monogram from './Monogram'
 
 export default function Hero() {
-  const { isLive, wedding } = useSiteContent()
+  const { isLive, wedding, comingSoonMessage } = useSiteContent()
 
   return (
     <div className="w-full max-w-[700px] mx-auto text-center">
@@ -76,9 +76,7 @@ export default function Hero() {
               'mb-14 md:mb-16',
             ].join(' ')}
           >
-            <p>We're looking forward to celebrating with the people who matter most.</p>
-            <p>Our wedding website is currently being prepared as we finalize the details.</p>
-            <p>We'll share everything here soon.</p>
+            {comingSoonMessage.map((line, i) => <p key={i}>{line}</p>)}
           </div>
 
           <span

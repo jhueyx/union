@@ -22,7 +22,16 @@ interface SettingsRow {
   venue_maps_url: string | null
   dress_code: string | null
   rsvp_deadline: string | null
+  coming_soon_message: string | null
 }
+
+/** The copy Hero.tsx always showed before this was editable. Still the
+ *  fallback when coming_soon_message is unset. */
+export const DEFAULT_COMING_SOON_MESSAGE = [
+  "We're looking forward to celebrating with the people who matter most.",
+  'Our wedding website is currently being prepared as we finalize the details.',
+  "We'll share everything here soon.",
+]
 
 export interface FaqItem { id: string; question: string; answer: string; category: string | null }
 export interface TravelItem {
@@ -53,6 +62,9 @@ export interface WeddingDisplay {
 interface SiteContent {
   isLive: boolean
   wedding: WeddingDisplay
+  /** Coming-soon landing paragraphs — DEFAULT_COMING_SOON_MESSAGE unless
+   *  customized in /admin/settings. */
+  comingSoonMessage: string[]
   events: PublicEvent[]
   travel: TravelItem[]
   registry: RegistryItem[]
@@ -65,7 +77,13 @@ const EMPTY_WEDDING: WeddingDisplay = {
 }
 
 const FALLBACK: SiteContent = {
-  isLive: false, wedding: EMPTY_WEDDING, events: [], travel: [], registry: [], faq: [],
+  isLive: false, wedding: EMPTY_WEDDING, comingSoonMessage: DEFAULT_COMING_SOON_MESSAGE,
+  events: [], travel: [], registry: [], faq: [],
+}
+
+function toComingSoonMessage(s: SettingsRow | null): string[] {
+  const lines = s?.coming_soon_message?.split('\n').map(l => l.trim()).filter(Boolean)
+  return lines?.length ? lines : DEFAULT_COMING_SOON_MESSAGE
 }
 
 function toDisplay(s: SettingsRow | null): WeddingDisplay {
@@ -104,6 +122,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
       setContent({
         isLive: row?.site_mode === 'live',
         wedding: toDisplay(row),
+        comingSoonMessage: toComingSoonMessage(row),
         events: (events.data ?? []) as PublicEvent[],
         travel: (travel.data ?? []) as TravelItem[],
         registry: (registry.data ?? []) as RegistryItem[],

@@ -225,6 +225,9 @@ export interface WeddingSettings {
   /** Gates the public site — 'coming-soon' shows the landing page only, no
    *  nav; 'live' shows the full site. Flipping this needs no deploy. */
   site_mode: SiteMode
+  /** Coming-soon landing copy, one paragraph per line. Null falls back to the
+   *  default copy baked into Hero.tsx. */
+  coming_soon_message: string | null
   updated_at?: string
 }
 
