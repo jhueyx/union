@@ -138,6 +138,7 @@ export default function Seating() {
   const [newName, setNewName] = useState('')
   const [newShape, setNewShape] = useState<'round' | 'rect'>('round')
   const [newCap, setNewCap] = useState(8)
+  const [addingTable, setAddingTable] = useState(false)
   const [attendingOnly, setAttendingOnly] = useState(true)
   const [sideFilter, setSideFilter] = useState<Side | 'all'>('all')
 
@@ -204,8 +205,18 @@ export default function Seating() {
 
   const { setNodeRef: trayRef, isOver: overTray } = useDroppable({ id: 'tray' })
 
+  /**
+   * `tables.length` is stale until load() resolves, so a second click (or a
+   * held-down Enter key) before that round trip finishes reused the same
+   * index and stacked two tables on the exact same pixel — indistinguishable
+   * on the canvas, and undeletable through the UI, since selecting one always
+   * hit whichever sat on top. addingTable blocks re-entry until the request
+   * that reads `i` has actually landed.
+   */
   async function addTable(e: React.FormEvent) {
     e.preventDefault()
+    if (addingTable) return
+    setAddingTable(true)
     const name = newName.trim() || `Table ${tables.length + 1}`
     // Lay new tables out in a grid so they never land on top of each other.
     const i = tables.length
@@ -213,7 +224,9 @@ export default function Seating() {
       name, shape: newShape, capacity: newCap,
       pos_x: 60 + (i % 5) * 270, pos_y: 60 + Math.floor(i / 5) * 260,
     }, 'add table')
-    if (row) { setNewName(''); load() }
+    if (row) setNewName('')
+    await load()
+    setAddingTable(false)
   }
 
   async function moveTable(id: string, x: number, y: number) {
@@ -284,7 +297,9 @@ export default function Seating() {
             type="number" min={1} max={30} value={newCap}
             onChange={e => setNewCap(Number(e.target.value) || 8)} className="w-20"
           />
-          <Btn variant="primary" type="submit">Add table</Btn>
+          <Btn variant="primary" type="submit" disabled={addingTable}>
+            {addingTable ? 'Adding…' : 'Add table'}
+          </Btn>
           {selectedTable && (
             <Btn variant="danger" onClick={() => removeTable(selectedTable.id)}>
               Delete {selectedTable.name}
