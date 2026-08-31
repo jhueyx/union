@@ -23,7 +23,21 @@ interface SettingsRow {
   dress_code: string | null
   rsvp_deadline: string | null
   coming_soon_message: string | null
+  nav_visibility: Record<string, boolean> | null
 }
+
+/** The nav's fixed set of links — shared with /admin/settings so the page
+ *  visibility checklist there can't drift from what Nav.tsx actually renders. */
+export const NAV_LINKS = [
+  { label: 'Our Story', to: '/story' },
+  { label: 'Save the Date', to: '/save-the-date' },
+  { label: 'Invite', to: '/invitation' },
+  { label: 'RSVP', to: '/rsvp' },
+  { label: 'Schedule', to: '/schedule' },
+  { label: 'Travel', to: '/travel' },
+  { label: 'Registry', to: '/registry' },
+  { label: 'FAQ', to: '/faq' },
+]
 
 /** The copy Hero.tsx always showed before this was editable. Still the
  *  fallback when coming_soon_message is unset. */
@@ -43,6 +57,7 @@ export interface PublicEvent {
   id: string; name: string; time_label: string; end_time_label: string | null
   location: string | null; address: string | null; description: string | null; dresscode: string | null
 }
+export interface StoryItem { id: string; heading: string; body: string }
 
 /** Formatted, display-ready wedding details — shaped to match the old
  *  config.ts WEDDING object closely, so components barely change. */
@@ -65,10 +80,13 @@ interface SiteContent {
   /** Coming-soon landing paragraphs — DEFAULT_COMING_SOON_MESSAGE unless
    *  customized in /admin/settings. */
   comingSoonMessage: string[]
+  /** True unless this path was explicitly turned off in /admin/settings. */
+  isNavVisible: (path: string) => boolean
   events: PublicEvent[]
   travel: TravelItem[]
   registry: RegistryItem[]
   faq: FaqItem[]
+  story: StoryItem[]
 }
 
 const EMPTY_WEDDING: WeddingDisplay = {
@@ -78,7 +96,8 @@ const EMPTY_WEDDING: WeddingDisplay = {
 
 const FALLBACK: SiteContent = {
   isLive: false, wedding: EMPTY_WEDDING, comingSoonMessage: DEFAULT_COMING_SOON_MESSAGE,
-  events: [], travel: [], registry: [], faq: [],
+  isNavVisible: () => true,
+  events: [], travel: [], registry: [], faq: [], story: [],
 }
 
 function toComingSoonMessage(s: SettingsRow | null): string[] {
@@ -117,16 +136,20 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
       supabase.from('wedding_travel').select('*').order('position'),
       supabase.from('wedding_registry').select('*').order('position'),
       supabase.from('wedding_faq').select('*').order('position'),
-    ]).then(([settings, events, travel, registry, faq]) => {
+      supabase.from('wedding_story').select('*').order('position'),
+    ]).then(([settings, events, travel, registry, faq, story]) => {
       const row = (settings.data as SettingsRow | null) ?? null
+      const hidden = row?.nav_visibility ?? {}
       setContent({
         isLive: row?.site_mode === 'live',
         wedding: toDisplay(row),
         comingSoonMessage: toComingSoonMessage(row),
+        isNavVisible: path => hidden[path] !== false,
         events: (events.data ?? []) as PublicEvent[],
         travel: (travel.data ?? []) as TravelItem[],
         registry: (registry.data ?? []) as RegistryItem[],
         faq: (faq.data ?? []) as FaqItem[],
+        story: (story.data ?? []) as StoryItem[],
       })
     }).catch(() => setContent(FALLBACK))
   }, [])

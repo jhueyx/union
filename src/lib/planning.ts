@@ -228,6 +228,10 @@ export interface WeddingSettings {
   /** Coming-soon landing copy, one paragraph per line. Null falls back to the
    *  default copy baked into Hero.tsx. */
   coming_soon_message: string | null
+  /** Keyed by nav route path (e.g. "/story"). A path missing from this object
+   *  is visible — default-on, so adding a column changed nothing until
+   *  someone actually unchecks a page. */
+  nav_visibility: Record<string, boolean>
   updated_at?: string
 }
 
@@ -276,6 +280,14 @@ export interface PublicEvent {
   address: string | null
   description: string | null
   dresscode: string | null
+  position: number
+}
+
+/** One section of Our Story (/story) — heading + body, in display order. */
+export interface StoryItem {
+  id: string
+  heading: string
+  body: string
   position: number
 }
 

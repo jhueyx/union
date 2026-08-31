@@ -42,7 +42,7 @@ publicly readable, no deploy needed to flip it:
 | Route | File | Status |
 |-------|------|--------|
 | `/` | `src/pages/Home.tsx` | Live — reads `wedding_settings` |
-| `/story` | `src/pages/StoryPage.tsx` | Placeholder — needs real story + photo (not database-backed yet) |
+| `/story` | `src/pages/StoryPage.tsx` | Live — reads `wedding_story`; still needs a real photo (no upload path yet) |
 | `/save-the-date` | `src/pages/SaveTheDate.tsx` | Live — reads `wedding_settings`; still needs an engagement photo |
 | `/invitation` | `src/pages/Invitation.tsx` | Live — reads `wedding_settings` + `wedding_events` |
 | `/rsvp` | `src/pages/RsvpPage.tsx` | Live — reads/writes Supabase |
@@ -61,7 +61,7 @@ publicly readable, no deploy needed to flip it:
 | `/admin/budget` | `src/pages/admin/Budget.tsx` | Live — estimates vs. actuals |
 | `/admin/vendors` | `src/pages/admin/Vendors.tsx` | Live — considering/booked/declined |
 | `/admin/gifts` | `src/pages/admin/Gifts.tsx` | Live — red envelope / cash gift tracker |
-| `/admin/content` | `src/pages/admin/Content.tsx` | Live — edits FAQ, Travel, Registry, and the public Schedule |
+| `/admin/content` | `src/pages/admin/Content.tsx` | Live — edits Story, FAQ, Travel, Registry, and the public Schedule |
 | `/admin/exports` | `src/pages/admin/Exports.tsx` | Live — addresses, catering, seating chart as copy/print text |
 | `/admin/settings` | `src/pages/admin/Settings.tsx` | Live — site status, wedding date, venue, RSVP deadline, meal options |
 
@@ -185,9 +185,13 @@ Seven more tables back the planning suite, all admin-only (RLS requires
 ### The public site is database-driven
 
 `src/config.ts` and `src/data/mock.ts` are **dead code** — nothing imports
-from them any more. The site reads live from four public-readable,
+from them any more. The site reads live from five public-readable,
 admin-write tables (edited at `/admin/content`), plus `wedding_settings`:
 
+- **`wedding_story`** — `heading`, `body`, `position`. Backs `/story`, in
+  order, under the couple's names and a photo placeholder. Seeded with the
+  three sections (How We Met / The Relationship / The Proposal) that used to
+  be hardcoded, verbatim bracketed placeholder text and all.
 - **`wedding_faq`** — `question`, `answer`, `category`, `position`. Backs `/faq`.
 - **`wedding_travel`** — `type` (`hotel | transport | activity | restaurant`,
   checked), `name`, `address`, `url`, `note`, `price_range`, `booking_code`,
@@ -201,27 +205,47 @@ admin-write tables (edited at `/admin/content`), plus `wedding_settings`:
   the internal day-of running order, which can carry vendor call times and
   other detail not meant for guests — don't conflate the two.
 
-All four: RLS `select using (true)`, admin `for all using (auth.role() =
+All five: RLS `select using (true)`, admin `for all using (auth.role() =
 'authenticated')` — same shape as `wedding_meals`. `position` is set to the
 list length at insert time (append order); there's no drag-to-reorder yet.
 
-`src/lib/siteContent.tsx` fetches `wedding_settings` + all four content tables
+`wedding_settings.nav_visibility` is a `jsonb` object keyed by nav route path
+(e.g. `{"/travel": false}`); a path missing from it is visible — default-on,
+so the column existing changes nothing until a page is actually unchecked.
+Edited via the "Page visibility" checklist at `/admin/settings`, built from
+`NAV_LINKS` (exported from `siteContent.tsx` so `Nav.tsx` and the settings
+checklist can't drift apart). Hiding a page only removes it from the nav — the
+route itself is still reachable by direct link, same as the rest of the site
+in coming-soon mode.
+
+`src/lib/siteContent.tsx` fetches `wedding_settings` + all five content tables
 once, at the `RootLayout` root (mounted for every public route, not `/admin`).
 `SiteContentProvider` renders `null` while that first fetch is in flight —
 same gate `AdminLayout` uses for the auth session — so a visitor never sees a
 flash of `coming-soon` before the real `site_mode` lands. `useSiteContent()`
-hands back `{ isLive, wedding, events, travel, registry, faq }`; `wedding` is
-shaped to match the old `config.ts` `WEDDING` object closely (`coupleNames`,
-`date`, `dateShort`, `time`, `dateTimeISO`, `rsvpDeadline`, `dressCode`,
-`venue: { name, address, city, mapsUrl }`) so the display components barely
-changed. Pure formatting (`formatDay`, `formatDayShort`, `formatTime`) lives
-in `src/lib/dates.ts`, not `planning.ts` — that module is admin-only (reads
-`supabase` with the assumption of an authenticated caller) and must not be
-imported from public pages.
+hands back `{ isLive, wedding, events, travel, registry, faq, story,
+isNavVisible }`; `wedding` is shaped to match the old `config.ts` `WEDDING`
+object closely (`coupleNames`, `date`, `dateShort`, `time`, `dateTimeISO`,
+`rsvpDeadline`, `dressCode`, `venue: { name, address, city, mapsUrl }`) so the
+display components barely changed. Pure formatting (`formatDay`,
+`formatDayShort`, `formatTime`) lives in `src/lib/dates.ts`, not `planning.ts`
+— that module is admin-only (reads `supabase` with the assumption of an
+authenticated caller) and must not be imported from public pages.
 
-Editing `wedding_settings` or any of the four content tables at
+Editing `wedding_settings` or any of the five content tables at
 `/admin/settings` / `/admin/content` takes effect on the live site immediately
 — no deploy, no waiting on Vercel.
+
+**A toggle must save itself.** Site status, Banquet style, and each Page
+visibility checkbox call `saveSettings()` directly in their own `onClick` /
+`onChange` and refresh `saved` on success — they do **not** stage into
+`draft` and wait for the page's other Save button. The first version of Site
+status did exactly that: clicking Live only updated local state, and the
+actual Save button lived in a visually separate "wedding details" panel with
+no indicator connecting the two — indistinguishable from broken, since a
+switch is expected to take effect the moment it's clicked. If you add another
+toggle-shaped control to this page, give it the same immediate-save treatment
+rather than folding it into the big form's `Draft`.
 
 ### Banquet style (`wedding_settings.single_menu`)
 
@@ -335,9 +359,9 @@ No manual `vercel --prod` needed. `vercel.json` has a catch-all rewrite for Reac
 
 1. Set the wedding date, venue, dress code at `/admin/settings`
 2. Add meal options at `/admin/settings` — RSVP can't be completed without at least one (unless Banquet style is on)
-3. Fill in FAQ, Travel, Registry, and Schedule at `/admin/content`
-4. Add engagement photo to Story page (`src/pages/StoryPage.tsx`) and Save the Date (`src/pages/SaveTheDate.tsx`) — no image-upload path exists yet, this is still a code change
-5. Write the real story in `src/pages/StoryPage.tsx` (three placeholder sections) — also still static, not database-backed
+3. Fill in Story, FAQ, Travel, Registry, and Schedule at `/admin/content`
+4. Add a real photo to Story and Save the Date — no image-upload path exists yet, still needs a code change (both pages currently show a placeholder box)
+5. Uncheck any page not ready yet in **Page visibility** at `/admin/settings`, so it doesn't show in the nav once live
 6. Add guests via `/admin/guests`; addresses if invitations are going out by mail
 7. ~~Set custom domain~~ — done: `sallyjason.com` is live and pointed at the `union` Vercel project
 8. Flip **Site status** to Live at `/admin/settings` — takes effect immediately, no deploy

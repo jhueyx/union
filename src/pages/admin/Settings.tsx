@@ -7,7 +7,7 @@ import {
   fetchAll, insertRow, deleteRow,
   type WeddingSettings, type MealOption, type SiteMode,
 } from '../../lib/planning'
-import { DEFAULT_COMING_SOON_MESSAGE } from '../../lib/siteContent'
+import { DEFAULT_COMING_SOON_MESSAGE, NAV_LINKS } from '../../lib/siteContent'
 import { PageHeader, Panel, Label, TextInput, Btn, Empty } from '../../components/admin/AdminUI'
 
 type Draft = {
@@ -76,13 +76,34 @@ export default function Settings() {
   const [mealDesc, setMealDesc] = useState('')
   const [mealIsChild, setMealIsChild] = useState(false)
 
+  const [changingMode, setChangingMode] = useState(false)
+  const [savingMessage, setSavingMessage] = useState(false)
+  const [messageNote, setMessageNote] = useState('')
+
+  // Nav visibility: a path present with value false is hidden; anything else
+  // (including simply absent) is visible. Kept out of Draft/the big save —
+  // same immediate-toggle treatment as Site status, for the same reason.
+  const [navVisibility, setNavVisibility] = useState<Record<string, boolean>>({})
+  const [savingNavPath, setSavingNavPath] = useState<string | null>(null)
+
   async function load() {
     const [s, m] = await Promise.all([fetchSettings(), fetchAll<MealOption>('wedding_meals', 'position')])
-    if (s) { setSaved(s); setDraft(toDraft(s)) }
+    if (s) { setSaved(s); setDraft(toDraft(s)); setNavVisibility(s.nav_visibility ?? {}) }
     setMeals(m)
     setLoading(false)
   }
   useEffect(() => { load() }, [])
+
+  async function toggleNavLink(path: string, visible: boolean) {
+    setSavingNavPath(path)
+    const next = { ...navVisibility }
+    if (visible) delete next[path]
+    else next[path] = false
+    setNavVisibility(next)
+    const ok = await saveSettings({ nav_visibility: next })
+    setSavingNavPath(null)
+    if (ok) load()
+  }
 
   /** "Herb-Crusted Salmon" -> a stable, human-readable id for meal_choice_id. */
   function slugify(label: string): string {
@@ -110,14 +131,41 @@ export default function Settings() {
   const set = (k: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setDraft(d => ({ ...d, [k]: e.target.value }))
 
-  async function save() {
-    setSaving(true)
+  /**
+   * Site status used to only stage a change into `draft`, requiring a scroll
+   * down to an unrelated "wedding details" Save button to actually take
+   * effect — indistinguishable from broken, since a toggle reads as an
+   * immediate action. This flips it and persists in the same click.
+   */
+  async function setSiteMode(m: SiteMode) {
+    setChangingMode(true)
+    setDraft(d => ({ ...d, site_mode: m }))
+    const ok = await saveSettings({ site_mode: m })
+    setChangingMode(false)
+    if (ok) load()
+  }
+
+  async function saveComingSoonMessage() {
+    setSavingMessage(true)
     const ok = await saveSettings({
-      site_mode: draft.site_mode,
-      couple_names: draft.couple_names.trim() || 'Sally & Jason',
       coming_soon_message: draft.coming_soon_message.trim() === DEFAULT_COMING_SOON_TEXT.trim()
         ? null
         : draft.coming_soon_message.trim() || null,
+    })
+    setSavingMessage(false)
+    if (ok) { setMessageNote('Saved.'); setTimeout(() => setMessageNote(''), 3000); load() }
+  }
+
+  async function toggleSingleMenu(checked: boolean) {
+    setDraft(d => ({ ...d, single_menu: checked }))
+    const ok = await saveSettings({ single_menu: checked })
+    if (ok) load()
+  }
+
+  async function save() {
+    setSaving(true)
+    const ok = await saveSettings({
+      couple_names: draft.couple_names.trim() || 'Sally & Jason',
       wedding_date: draft.wedding_date || null,
       ceremony_time: draft.ceremony_time || null,
       venue_name: draft.venue_name.trim() || null,
@@ -127,7 +175,6 @@ export default function Settings() {
       dress_code: draft.dress_code.trim() || null,
       rsvp_deadline: draft.rsvp_deadline || null,
       guest_target: draft.guest_target ? Number(draft.guest_target) : null,
-      single_menu: draft.single_menu,
     })
     setSaving(false)
     if (ok) { setNote('Saved.'); setTimeout(() => setNote(''), 3000); load() }
@@ -157,27 +204,36 @@ export default function Settings() {
                 : 'Guests see only the coming-soon landing page below. Nav is hidden.'}
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {(['coming-soon', 'live'] as const).map(m => (
-              <button
-                key={m}
-                onClick={() => setDraft(d => ({ ...d, site_mode: m }))}
-                className={
-                  'text-[10px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-[2px] border transition-colors ' +
-                  (draft.site_mode === m
-                    ? 'border-zinc-500 text-zinc-50'
-                    : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')
-                }
-              >
-                {m === 'live' ? 'Live' : 'Coming soon'}
-              </button>
-            ))}
+          <div className="flex items-center gap-3 shrink-0">
+            {changingMode && (
+              <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-600">Saving…</span>
+            )}
+            <div className="flex items-center gap-2">
+              {(['coming-soon', 'live'] as const).map(m => (
+                <button
+                  key={m}
+                  disabled={changingMode}
+                  onClick={() => setSiteMode(m)}
+                  className={
+                    'text-[10px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-[2px] border transition-colors disabled:opacity-50 ' +
+                    (draft.site_mode === m
+                      ? 'border-zinc-500 text-zinc-50'
+                      : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')
+                  }
+                >
+                  {m === 'live' ? 'Live' : 'Coming soon'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {draft.site_mode === 'coming-soon' && (
           <div>
-            <Label>Coming-soon message</Label>
+            <div className="flex items-baseline justify-between mb-1">
+              <Label>Coming-soon message</Label>
+              {messageNote && <span className="text-[10px] tracking-[0.15em] uppercase text-emerald-400">{messageNote}</span>}
+            </div>
             <p className="text-sm text-zinc-400 mb-3">
               What guests see under the SJ monogram right now. One paragraph per line.
             </p>
@@ -187,8 +243,51 @@ export default function Settings() {
               rows={4}
               className="w-full bg-transparent border border-zinc-800 rounded-[2px] px-3 py-2 text-sm text-zinc-50 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors resize-y"
             />
+            <div className="flex items-center gap-3 mt-3">
+              <Btn
+                variant="primary"
+                onClick={saveComingSoonMessage}
+                disabled={savingMessage || (saved != null && draft.coming_soon_message === (saved.coming_soon_message ?? DEFAULT_COMING_SOON_TEXT))}
+              >
+                {savingMessage ? 'Saving…' : 'Save message'}
+              </Btn>
+            </div>
           </div>
         )}
+      </Panel>
+
+      {/* Only meaningful once Site status is Live — coming-soon mode already
+          hides the whole nav. Each checkbox saves itself immediately, same as
+          Site status above. */}
+      <Panel>
+        <Label>Page visibility</Label>
+        <p className="text-sm text-zinc-400 mb-4">
+          Uncheck a page to pull it from the nav once the site is live — for a
+          page that isn't ready yet. The route itself still works if someone
+          has the direct link; this only hides the menu item.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {NAV_LINKS.map(l => {
+            const visible = navVisibility[l.to] !== false
+            return (
+              <label
+                key={l.to}
+                className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={visible}
+                  disabled={savingNavPath === l.to}
+                  onChange={e => toggleNavLink(l.to, e.target.checked)}
+                />
+                {l.label}
+                {savingNavPath === l.to && (
+                  <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-600">saving…</span>
+                )}
+              </label>
+            )
+          })}
+        </div>
       </Panel>
 
       {date ? (
@@ -268,7 +367,7 @@ export default function Settings() {
             <input
               type="checkbox"
               checked={draft.single_menu}
-              onChange={e => setDraft(d => ({ ...d, single_menu: e.target.checked }))}
+              onChange={e => toggleSingleMenu(e.target.checked)}
             />
             Single menu
           </label>

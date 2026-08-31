@@ -11,13 +11,13 @@
 import { useEffect, useState } from 'react'
 import {
   fetchAll, insertRow, updateRow, deleteRow,
-  type FaqItem, type TravelItem, type RegistryItem, type PublicEvent,
+  type FaqItem, type TravelItem, type RegistryItem, type PublicEvent, type StoryItem,
 } from '../../lib/planning'
 import { PageHeader, Panel, TextInput, Select, Btn, Empty } from '../../components/admin/AdminUI'
 
-type View = 'faq' | 'travel' | 'registry' | 'schedule'
+type View = 'story' | 'faq' | 'travel' | 'registry' | 'schedule'
 const VIEWS: [View, string][] = [
-  ['faq', 'FAQ'], ['travel', 'Travel'], ['registry', 'Registry'], ['schedule', 'Schedule'],
+  ['story', 'Story'], ['faq', 'FAQ'], ['travel', 'Travel'], ['registry', 'Registry'], ['schedule', 'Schedule'],
 ]
 
 const TEXTAREA_CLS =
@@ -37,6 +37,63 @@ function Row({ children, onRemove }: { children: React.ReactNode; onRemove: () =
         </button>
       </div>
     </Panel>
+  )
+}
+
+// ── Story ────────────────────────────────────────────────────────────────
+
+function StoryTab() {
+  const [items, setItems] = useState<StoryItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [heading, setHeading] = useState('')
+
+  async function load() {
+    setItems(await fetchAll<StoryItem>('wedding_story', 'position'))
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [])
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault()
+    if (!heading.trim()) return
+    const row = await insertRow<StoryItem>('wedding_story', {
+      heading: heading.trim(), body: '', position: items.length,
+    }, 'add story section')
+    if (row) { setHeading(''); load() }
+  }
+
+  async function setField(item: StoryItem, field: 'heading' | 'body', value: string) {
+    if (await updateRow('wedding_story', item.id, { [field]: value }, 'update story section')) load()
+  }
+
+  if (loading) return <Empty>Loading…</Empty>
+  return (
+    <>
+      <p className="text-sm text-zinc-500 mb-4">
+        Shown in order on /story, under the couple's names and a photo
+        placeholder (there's no image upload yet — that's still a code change).
+      </p>
+      <form onSubmit={add} className="flex gap-2 mb-6">
+        <TextInput placeholder="New section heading, e.g. How We Met…" value={heading} onChange={e => setHeading(e.target.value)} className="flex-1" />
+        <Btn variant="primary" type="submit">Add</Btn>
+      </form>
+      {items.length === 0 ? <Empty>No story sections yet.</Empty> : (
+        <div className="space-y-3">
+          {items.map(item => (
+            <Row key={item.id} onRemove={async () => { if (await deleteRow('wedding_story', item.id, 'remove story section')) load() }}>
+              <TextInput
+                defaultValue={item.heading} onBlur={e => setField(item, 'heading', e.target.value)}
+                className="w-full" aria-label="Heading"
+              />
+              <textarea
+                defaultValue={item.body} onBlur={e => setField(item, 'body', e.target.value)}
+                placeholder="Section text…" rows={4} className={TEXTAREA_CLS} aria-label="Body"
+              />
+            </Row>
+          ))}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -296,7 +353,7 @@ function ScheduleTab() {
 }
 
 export default function Content() {
-  const [view, setView] = useState<View>('faq')
+  const [view, setView] = useState<View>('story')
 
   return (
     <div className="max-w-[900px] mx-auto px-6 py-12">
@@ -319,6 +376,7 @@ export default function Content() {
         ))}
       </div>
 
+      {view === 'story' && <StoryTab />}
       {view === 'faq' && <FaqTab />}
       {view === 'travel' && <TravelTab />}
       {view === 'registry' && <RegistryTab />}

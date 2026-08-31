@@ -1,5 +1,9 @@
 // Union — our story page.
+import { useSiteContent } from '../lib/siteContent'
+
 export default function StoryPage() {
+  const { story, wedding } = useSiteContent()
+
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
       <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8 text-center">
@@ -7,7 +11,7 @@ export default function StoryPage() {
       </p>
 
       <h1 className="text-2xl font-[300] tracking-[0.08em] text-zinc-900 mb-16 text-center">
-        Sally &amp; Jason
+        {wedding.coupleNames}
       </h1>
 
       {/* Photo placeholder */}
@@ -20,32 +24,14 @@ export default function StoryPage() {
       {/* Story sections */}
       <div className="space-y-12 text-sm md:text-base leading-[1.9] text-zinc-600 max-w-[560px] mx-auto">
 
-        <div>
-          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-4">
-            How We Met
-          </p>
-          <p>
-            [Write how you two first met — where, when, and what made it memorable.]
-          </p>
-        </div>
-
-        <div>
-          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-4">
-            The Relationship
-          </p>
-          <p>
-            [Share what your relationship has been like — the adventures, the everyday moments, what makes your partnership unique.]
-          </p>
-        </div>
-
-        <div>
-          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-4">
-            The Proposal
-          </p>
-          <p>
-            [Tell the proposal story — the setting, the moment, and what was said.]
-          </p>
-        </div>
+        {story.map((section) => (
+          <div key={section.id}>
+            <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-4">
+              {section.heading}
+            </p>
+            <p>{section.body}</p>
+          </div>
+        ))}
 
         <div className="border-t border-zinc-100 pt-12 text-center">
           <p className="text-zinc-500 italic">

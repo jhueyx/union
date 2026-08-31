@@ -1,18 +1,7 @@
 // Union — top navigation. Hidden in coming-soon mode. Uses React Router links.
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { useSiteContent } from '../lib/siteContent'
-
-const LINKS = [
-  { label: 'Our Story', to: '/story' },
-  { label: 'Save the Date', to: '/save-the-date' },
-  { label: 'Invite', to: '/invitation' },
-  { label: 'RSVP', to: '/rsvp' },
-  { label: 'Schedule', to: '/schedule' },
-  { label: 'Travel', to: '/travel' },
-  { label: 'Registry', to: '/registry' },
-  { label: 'FAQ', to: '/faq' },
-]
+import { useSiteContent, NAV_LINKS } from '../lib/siteContent'
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -24,10 +13,12 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function Nav() {
   const [open, setOpen] = useState(false)
-  const { isLive, wedding } = useSiteContent()
+  const { isLive, wedding, isNavVisible } = useSiteContent()
 
   // The nav does not render at all in coming-soon mode.
   if (!isLive) return null
+
+  const links = NAV_LINKS.filter(l => isNavVisible(l.to))
 
   return (
     <header className="sticky top-0 z-50 bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-100">
@@ -43,7 +34,7 @@ export default function Nav() {
         {/* Desktop nav */}
         <nav aria-label="Site navigation" className="hidden md:block">
           <ul className="flex items-center gap-6">
-            {LINKS.map(({ label, to }) => (
+            {links.map(({ label, to }) => (
               <li key={to} className="whitespace-nowrap">
                 <NavLink to={to} className={linkClass}>
                   {label}
@@ -72,7 +63,7 @@ export default function Nav() {
           className="md:hidden border-t border-zinc-100 bg-[#fafafa]"
         >
           <ul className="max-w-[700px] mx-auto px-6 py-4 flex flex-col gap-4">
-            {LINKS.map(({ label, to }) => (
+            {links.map(({ label, to }) => (
               <li key={to}>
                 <NavLink
                   to={to}
