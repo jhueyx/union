@@ -16,7 +16,7 @@ import {
 import {
   fetchAll, insertRow, updateRow, deleteRow, SIDE_LABEL,
   type Guest, type Household, type SeatAssignment, type WeddingTable, type RsvpResponse,
-  type Side,
+  type Side, type UnnamedSeatBlock,
 } from '../../lib/planning'
 import { PageHeader, Label, TextInput, Select, Btn, Empty } from '../../components/admin/AdminUI'
 
@@ -56,11 +56,36 @@ function DraggableGuest({ guest, seated }: { guest: Guest; seated?: boolean }) {
   )
 }
 
+/** A household's not-yet-named seats, seated as one block. Dotted border
+ *  distinguishes it from a real guest chip at a glance. */
+function HouseholdChip({ household, count }: { household: Household; count: number }) {
+  return (
+    <span className="inline-block px-2 py-1 rounded-[2px] text-xs whitespace-nowrap border border-dashed border-zinc-600 bg-zinc-900 text-zinc-400">
+      {household.name} · {count} unnamed
+    </span>
+  )
+}
+
+function DraggableHouseholdBlock({ household, count }: { household: Household; count: number }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `unnamed:${household.id}` })
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={'cursor-grab active:cursor-grabbing touch-none ' + (isDragging ? 'opacity-30' : '')}
+    >
+      <HouseholdChip household={household} count={count} />
+    </div>
+  )
+}
+
 function TableNode({
-  table, seated, onMove, onSelect, selected, onRename,
+  table, seated, unnamedSeated, onMove, onSelect, selected, onRename,
 }: {
   table: WeddingTable
   seated: Guest[]
+  unnamedSeated: { household: Household; count: number }[]
   onMove: (id: string, x: number, y: number) => void
   onSelect: (id: string) => void
   selected: boolean
@@ -93,7 +118,8 @@ function TableNode({
     onMove(table.id, table.pos_x, table.pos_y) // commit
   }
 
-  const over = seated.length > table.capacity
+  const occupied = seated.length + unnamedSeated.reduce((n, u) => n + u.count, 0)
+  const over = occupied > table.capacity
   const size = table.shape === 'round' ? 190 : 230
 
   return (
@@ -130,13 +156,18 @@ function TableNode({
           className="w-full text-center text-[10px] tracking-[0.2em] uppercase text-zinc-400 bg-transparent border border-transparent rounded-[2px] px-1 py-0.5 hover:border-zinc-800 focus:border-zinc-600 focus:outline-none focus:text-zinc-200 transition-colors cursor-text"
         />
         <p className={'text-[10px] tabular-nums ' + (over ? 'text-rose-400' : 'text-zinc-600')}>
-          {seated.length}/{table.capacity}
+          {occupied}/{table.capacity}
         </p>
       </div>
       <div className="flex flex-wrap gap-1 justify-center">
         {seated.map(g => (
           <div key={g.id} data-guest>
             <DraggableGuest guest={g} seated />
+          </div>
+        ))}
+        {unnamedSeated.map(({ household, count }) => (
+          <div key={household.id} data-guest>
+            <DraggableHouseholdBlock household={household} count={count} />
           </div>
         ))}
       </div>
@@ -150,8 +181,11 @@ export default function Seating() {
   const [guests, setGuests] = useState<Guest[]>([])
   const [households, setHouseholds] = useState<Household[]>([])
   const [rsvps, setRsvps] = useState<RsvpResponse[]>([])
+  const [unnamedSeats, setUnnamedSeats] = useState<UnnamedSeatBlock[]>([])
   const [loading, setLoading] = useState(true)
-  const [dragging, setDragging] = useState<Guest | null>(null)
+  const [dragging, setDragging] = useState<
+    { type: 'guest'; guest: Guest } | { type: 'unnamed'; household: Household; count: number } | null
+  >(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [newShape, setNewShape] = useState<'round' | 'rect'>('round')
@@ -163,14 +197,15 @@ export default function Seating() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   async function load() {
-    const [t, a, g, h, r] = await Promise.all([
+    const [t, a, g, h, r, u] = await Promise.all([
       fetchAll<WeddingTable>('wedding_tables', 'name'),
       fetchAll<SeatAssignment>('wedding_seat_assignments'),
       fetchAll<Guest>('guests', 'last_name'),
       fetchAll<Household>('households', 'name'),
       fetchAll<RsvpResponse>('rsvp_responses'),
+      fetchAll<UnnamedSeatBlock>('wedding_unnamed_seats'),
     ])
-    setTables(t); setAssignments(a); setGuests(g); setHouseholds(h); setRsvps(r); setLoading(false)
+    setTables(t); setAssignments(a); setGuests(g); setHouseholds(h); setRsvps(r); setUnnamedSeats(u); setLoading(false)
   }
   useEffect(() => { load() }, [])
 
@@ -205,6 +240,64 @@ export default function Seating() {
     }
     return m
   }, [guests, tableOf])
+
+  // How many of each household's allotted seats still have no guest row.
+  // Computed live from max_guests vs. named guests — not stored — so a
+  // household's block shrinks on its own as real names are added in
+  // /admin/guests, with nothing here needing to react to that on purpose.
+  const unnamedRemaining = useMemo(() => {
+    const named = new Map<string, number>()
+    for (const g of guests) named.set(g.household_id, (named.get(g.household_id) ?? 0) + 1)
+    const m = new Map<string, number>()
+    for (const h of households) m.set(h.id, Math.max(0, h.max_guests - (named.get(h.id) ?? 0)))
+    return m
+  }, [guests, households])
+
+  // A block can go stale when every seat it reserved gets a real name after
+  // it was placed at a table — swept up here rather than left to linger as a
+  // phantom reservation. Filtered out of every view below and deleted in the
+  // background; self-terminating since the next load() won't find it again.
+  const liveUnnamedSeats = useMemo(
+    () => unnamedSeats.filter(u => (unnamedRemaining.get(u.household_id) ?? 0) > 0),
+    [unnamedSeats, unnamedRemaining],
+  )
+  useEffect(() => {
+    const stale = unnamedSeats.filter(u => (unnamedRemaining.get(u.household_id) ?? 0) <= 0)
+    if (stale.length === 0) return
+    void Promise.all(stale.map(u => deleteRow('wedding_unnamed_seats', u.id, 'clear filled seats'))).then(load)
+  }, [unnamedSeats, unnamedRemaining])
+
+  const householdById = useMemo(() => new Map(households.map(h => [h.id, h])), [households])
+
+  const unnamedTableOf = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const u of liveUnnamedSeats) m.set(u.household_id, u.table_id)
+    return m
+  }, [liveUnnamedSeats])
+
+  const unnamedSeatedByTable = useMemo(() => {
+    const m = new Map<string, { household: Household; count: number }[]>()
+    for (const u of liveUnnamedSeats) {
+      const household = householdById.get(u.household_id)
+      if (!household) continue
+      const count = unnamedRemaining.get(household.id) ?? 0
+      const list = m.get(u.table_id) ?? []; list.push({ household, count }); m.set(u.table_id, list)
+    }
+    return m
+  }, [liveUnnamedSeats, householdById, unnamedRemaining])
+
+  // Households with unfilled seats not yet placed at any table. No
+  // "attending only" filter — there's no RSVP for a seat with no name on it
+  // yet — but side still applies, same as the guest tray below.
+  const unseatedHouseholds = useMemo(
+    () => households.filter(h => {
+      if (unnamedTableOf.has(h.id)) return false
+      if ((unnamedRemaining.get(h.id) ?? 0) <= 0) return false
+      if (sideFilter === 'all') return true
+      return h.side === sideFilter || h.side === 'both'
+    }),
+    [households, unnamedTableOf, unnamedRemaining, sideFilter],
+  )
 
   // Unseated tray. Defaults to confirmed attendees only — seating someone who
   // has declined is the most common way a chart goes wrong.
@@ -257,7 +350,8 @@ export default function Seating() {
   }
 
   async function removeTable(id: string) {
-    // Assignments cascade, so the guests simply return to the tray.
+    // Assignments and unnamed-seat blocks both cascade, so whatever was
+    // seated there simply returns to the tray.
     if (await deleteRow('wedding_tables', id, 'remove table')) { setSelected(null); load() }
   }
 
@@ -271,16 +365,41 @@ export default function Seating() {
   }
 
   function onDragStart(e: DragStartEvent) {
-    const id = String(e.active.id).replace('guest:', '')
-    setDragging(guests.find(g => g.id === id) ?? null)
+    const id = String(e.active.id)
+    if (id.startsWith('unnamed:')) {
+      const household = householdById.get(id.slice('unnamed:'.length))
+      if (household) setDragging({ type: 'unnamed', household, count: unnamedRemaining.get(household.id) ?? 0 })
+      return
+    }
+    const guest = guests.find(g => g.id === id.slice('guest:'.length))
+    if (guest) setDragging({ type: 'guest', guest })
   }
 
   async function onDragEnd(e: DragEndEvent) {
     setDragging(null)
-    const guestId = String(e.active.id).replace('guest:', '')
+    const id = String(e.active.id)
     const over = e.over?.id ? String(e.over.id) : null
     if (!over) return
 
+    if (id.startsWith('unnamed:')) {
+      const householdId = id.slice('unnamed:'.length)
+      const existing = liveUnnamedSeats.find(u => u.household_id === householdId)
+      if (over === 'tray') {
+        if (existing && await deleteRow('wedding_unnamed_seats', existing.id, 'unseat household')) load()
+        return
+      }
+      const tableId = over.replace('table:', '')
+      if (existing?.table_id === tableId) return
+      if (existing) {
+        if (await updateRow('wedding_unnamed_seats', existing.id, { table_id: tableId }, 'move unnamed seats')) load()
+      } else {
+        if (await insertRow<UnnamedSeatBlock>('wedding_unnamed_seats',
+          { household_id: householdId, table_id: tableId }, 'seat unnamed seats')) load()
+      }
+      return
+    }
+
+    const guestId = id.slice('guest:'.length)
     const existing = assignments.find(a => a.guest_id === guestId)
 
     if (over === 'tray') {
@@ -301,6 +420,7 @@ export default function Seating() {
   if (loading) return <div className="max-w-[1200px] mx-auto px-6 py-12"><Empty>Loading…</Empty></div>
 
   const selectedTable = tables.find(t => t.id === selected)
+  const unnamedTotal = households.reduce((n, h) => n + (unnamedRemaining.get(h.id) ?? 0), 0)
 
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
@@ -310,6 +430,7 @@ export default function Seating() {
           action={
             <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-500">
               {assignments.length} seated · {unseated.length} to place
+              {unnamedTotal > 0 && ` · ${unnamedTotal} unnamed`}
             </span>
           }
         />
@@ -353,6 +474,7 @@ export default function Seating() {
                   key={t.id}
                   table={t}
                   seated={seatedByTable.get(t.id) ?? []}
+                  unnamedSeated={unnamedSeatedByTable.get(t.id) ?? []}
                   onMove={moveTable}
                   onSelect={setSelected}
                   selected={selected === t.id}
@@ -396,23 +518,35 @@ export default function Seating() {
               ))}
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {unseated.length === 0
+              {unseated.length === 0 && unseatedHouseholds.length === 0
                 ? <p className="text-xs text-zinc-600">Everyone is seated.</p>
-                : unseated.map(g => (
-                    <div key={g.id} title={householdName(g)}>
-                      <DraggableGuest guest={g} />
-                    </div>
-                  ))}
+                : <>
+                    {unseated.map(g => (
+                      <div key={g.id} title={householdName(g)}>
+                        <DraggableGuest guest={g} />
+                      </div>
+                    ))}
+                    {unseatedHouseholds.map(h => (
+                      <DraggableHouseholdBlock key={h.id} household={h} count={unnamedRemaining.get(h.id) ?? 0} />
+                    ))}
+                  </>}
             </div>
             <p className="text-[10px] text-zinc-600 mt-4 leading-relaxed">
               Drag a name onto a table to seat them. Drag back here to unseat.
-              Drag a table to move it. A dashed outline marks a child.
+              Drag a table to move it. A dashed outline marks a child. A
+              dashed-border chip is a household's seats with no names yet —
+              drag it as one block; it shrinks and clears itself as you add
+              real names in Guests.
             </p>
           </div>
         </div>
       </div>
 
-      <DragOverlay>{dragging ? <GuestChip guest={dragging} /> : null}</DragOverlay>
+      <DragOverlay>
+        {dragging?.type === 'guest' ? <GuestChip guest={dragging.guest} />
+          : dragging?.type === 'unnamed' ? <HouseholdChip household={dragging.household} count={dragging.count} />
+          : null}
+      </DragOverlay>
     </DndContext>
   )
 }

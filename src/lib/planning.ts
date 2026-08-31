@@ -30,6 +30,20 @@ export interface SeatAssignment {
   seat_index: number | null
 }
 
+/**
+ * Reserves a household's not-yet-named seats at a table as a single block,
+ * for seating a household before its guests have names. `household_id` is
+ * unique — a household's unnamed block lives at one table at a time. How
+ * many seats it represents isn't stored here; it's `household.max_guests`
+ * minus however many of that household's guests already have real rows, so
+ * it shrinks on its own as names get added and never goes stale.
+ */
+export interface UnnamedSeatBlock {
+  id: string
+  household_id: string
+  table_id: string
+}
+
 export interface Guest {
   id: string
   household_id: string
