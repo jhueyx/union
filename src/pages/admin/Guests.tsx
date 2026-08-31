@@ -296,7 +296,7 @@ export default function Guests() {
 
       <div className="flex flex-wrap gap-2 mb-6">
         {([
-          ['all', 'Both sides'],
+          ['all', 'Any side'],
           ['bride', SIDE_LABEL.bride],
           ['groom', SIDE_LABEL.groom],
           ['both', SIDE_LABEL.both],
