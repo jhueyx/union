@@ -38,7 +38,7 @@ export default function StoryPage() {
             <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-4">
               {section.heading}
             </p>
-            <p>{section.body}</p>
+            <p className="whitespace-pre-line">{section.body}</p>
           </div>
         ))}
 
