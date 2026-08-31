@@ -191,6 +191,11 @@ export default function Guests() {
     if (await deleteRow('guests', id, 'remove guest')) load()
   }
 
+  /** Cascades to the household's guests, RSVPs, and seat assignments. */
+  async function removeHousehold(id: string) {
+    if (await deleteRow('households', id, 'remove household')) load()
+  }
+
   async function setMaxGuests(h: Household, n: number) {
     if (await updateRow('households', h.id, { max_guests: n }, 'update household')) load()
   }
@@ -399,6 +404,12 @@ export default function Guests() {
                       onChange={e => setMaxGuests(h, Number(e.target.value) || 1)}
                       className="w-16"
                     />
+                    <button
+                      onClick={() => removeHousehold(h.id)}
+                      className="text-[10px] tracking-[0.15em] uppercase text-zinc-600 hover:text-rose-400 transition-colors"
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
 
