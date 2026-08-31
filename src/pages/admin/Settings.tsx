@@ -16,11 +16,12 @@ type Draft = {
   venue_address: string
   rsvp_deadline: string
   guest_target: string
+  single_menu: boolean
 }
 
 const EMPTY: Draft = {
   wedding_date: '', ceremony_time: '', venue_name: '',
-  venue_address: '', rsvp_deadline: '', guest_target: '',
+  venue_address: '', rsvp_deadline: '', guest_target: '', single_menu: false,
 }
 
 function toDraft(s: WeddingSettings): Draft {
@@ -32,6 +33,7 @@ function toDraft(s: WeddingSettings): Draft {
     venue_address: s.venue_address ?? '',
     rsvp_deadline: s.rsvp_deadline ?? '',
     guest_target: s.guest_target == null ? '' : String(s.guest_target),
+    single_menu: s.single_menu,
   }
 }
 
@@ -99,6 +101,7 @@ export default function Settings() {
       venue_address: draft.venue_address.trim() || null,
       rsvp_deadline: draft.rsvp_deadline || null,
       guest_target: draft.guest_target ? Number(draft.guest_target) : null,
+      single_menu: draft.single_menu,
     })
     setSaving(false)
     if (ok) { setNote('Saved.'); setTimeout(() => setNote(''), 3000); load() }
@@ -168,13 +171,35 @@ export default function Settings() {
       </Panel>
 
       <Panel>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label>Banquet style</Label>
+            <p className="text-sm text-zinc-400">
+              One fixed menu served to every table, rather than each guest
+              picking an entrée. Turns off the meal-choice step in RSVP —
+              guests just say who's coming, with dietary notes for the kitchen.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase text-zinc-300 cursor-pointer whitespace-nowrap shrink-0">
+            <input
+              type="checkbox"
+              checked={draft.single_menu}
+              onChange={e => setDraft(d => ({ ...d, single_menu: e.target.checked }))}
+            />
+            Single menu
+          </label>
+        </div>
+      </Panel>
+
+      <Panel className={draft.single_menu ? 'opacity-50' : undefined}>
         <div className="flex items-baseline justify-between mb-1">
           <Label>Meal options</Label>
           <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-600">{meals.length}</span>
         </div>
         <p className="text-sm text-zinc-400 mb-4">
-          What guests choose from during RSVP. Empty means the RSVP meal step has
-          nothing to offer and cannot be completed.
+          {draft.single_menu
+            ? "Not used while Banquet style is on — guests don't choose between these during RSVP."
+            : 'What guests choose from during RSVP. Empty means the RSVP meal step has nothing to offer and cannot be completed.'}
         </p>
 
         {meals.length > 0 && (

@@ -10,9 +10,9 @@
 // email or handed over on paper, which is how they are actually used.
 import { useEffect, useMemo, useState } from 'react'
 import {
-  fetchAll, addressLines, hasAddress, SIDE_LABEL,
+  fetchAll, fetchSettings, addressLines, hasAddress, SIDE_LABEL, tablesNeeded,
   type Guest, type Household, type RsvpResponse, type WeddingTable, type SeatAssignment,
-  type MealOption,
+  type MealOption, type WeddingSettings,
 } from '../../lib/planning'
 import { PageHeader, Panel, Label, Btn, Empty } from '../../components/admin/AdminUI'
 
@@ -31,6 +31,7 @@ export default function Exports() {
   const [tables, setTables] = useState<WeddingTable[]>([])
   const [seats, setSeats] = useState<SeatAssignment[]>([])
   const [meals, setMeals] = useState<MealOption[]>([])
+  const [settings, setSettings] = useState<WeddingSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<View>('addresses')
   const [copied, setCopied] = useState(false)
@@ -43,8 +44,10 @@ export default function Exports() {
       fetchAll<WeddingTable>('wedding_tables', 'name'),
       fetchAll<SeatAssignment>('wedding_seat_assignments'),
       fetchAll<MealOption>('wedding_meals', 'position'),
-    ]).then(([h, g, r, t, s, m]) => {
-      setHouseholds(h); setGuests(g); setRsvps(r); setTables(t); setSeats(s); setMeals(m); setLoading(false)
+      fetchSettings(),
+    ]).then(([h, g, r, t, s, m, se]) => {
+      setHouseholds(h); setGuests(g); setRsvps(r); setTables(t); setSeats(s); setMeals(m)
+      setSettings(se); setLoading(false)
     })
   }, [])
 
@@ -92,16 +95,28 @@ export default function Exports() {
         .filter(([, r]) => r?.dietary_restrictions?.trim())
         .map(([g, r]) => `  ${g.first_name} ${g.last_name} — ${r!.dietary_restrictions!.trim()}`)
 
-      const mealLabel = new Map(meals.map(m => [m.id, m.label]))
-      const mealCounts = new Map<string, number>()
-      let unchosen = 0
-      for (const g of rows) {
-        const id = rsvpOf.get(g.id)?.meal_choice_id
-        if (!id) { unchosen++; continue }
-        mealCounts.set(id, (mealCounts.get(id) ?? 0) + 1)
-      }
-      const mealLines = [...mealCounts.entries()]
-        .map(([id, n]) => `  ${(mealLabel.get(id) ?? id).padEnd(24)}${n}`)
+      // Banquet-style: one fixed menu, so there is nothing to break down by
+      // choice — what a restaurant actually asks for is the table count.
+      const singleMenu = settings?.single_menu ?? false
+      const menuSection = singleMenu
+        ? [`TABLES`, `  ${tablesNeeded(rows.length, tables)} tables, fixed banquet menu`]
+        : (() => {
+            const mealLabel = new Map(meals.map(m => [m.id, m.label]))
+            const mealCounts = new Map<string, number>()
+            let unchosen = 0
+            for (const g of rows) {
+              const id = rsvpOf.get(g.id)?.meal_choice_id
+              if (!id) { unchosen++; continue }
+              mealCounts.set(id, (mealCounts.get(id) ?? 0) + 1)
+            }
+            const mealLines = [...mealCounts.entries()]
+              .map(([id, n]) => `  ${(mealLabel.get(id) ?? id).padEnd(24)}${n}`)
+            return [
+              `MEAL COUNTS`,
+              ...(mealLines.length ? mealLines : ['  No meals selected yet.']),
+              ...(unchosen ? [`  Unchosen${' '.repeat(16)}${unchosen}`] : []),
+            ]
+          })()
 
       return [
         `HEADCOUNT`,
@@ -109,9 +124,7 @@ export default function Exports() {
         `  Children  ${children}`,
         `  Total     ${rows.length}`,
         '',
-        `MEAL COUNTS`,
-        ...(mealLines.length ? mealLines : ['  No meals selected yet.']),
-        ...(unchosen ? [`  Unchosen${' '.repeat(16)}${unchosen}`] : []),
+        ...menuSection,
         '',
         `DIETARY REQUIREMENTS (${dietary.length})`,
         ...(dietary.length ? dietary : ['  None reported.']),
@@ -134,7 +147,7 @@ export default function Exports() {
         ...(list.length ? list.map(n => `  ${n}`) : ['  — empty —']),
       ].join('\n')
     }).join('\n\n')
-  }, [view, households, guestsOf, attending, rsvpOf, tables, seats, guests, meals])
+  }, [view, households, guestsOf, attending, rsvpOf, tables, seats, guests, meals, settings])
 
   async function copy() {
     try {

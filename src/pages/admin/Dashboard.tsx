@@ -9,10 +9,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  fetchAll, fetchSettings, money, SIDE_LABEL, hasAddress,
+  fetchAll, fetchSettings, money, SIDE_LABEL, hasAddress, tablesNeeded,
   daysUntil, relativeDay, formatDay, toISODay, today as todayDate, shiftDay,
   type Household, type Guest, type RsvpResponse, type WeddingTask,
   type BudgetItem, type WeddingTable, type SeatAssignment, type WeddingSettings,
+  type WeddingGift,
 } from '../../lib/planning'
 import { PageHeader, Panel, Label, Stat, Empty } from '../../components/admin/AdminUI'
 
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const [budget, setBudget] = useState<BudgetItem[]>([])
   const [tables, setTables] = useState<WeddingTable[]>([])
   const [seats, setSeats] = useState<SeatAssignment[]>([])
+  const [gifts, setGifts] = useState<WeddingGift[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -37,9 +39,10 @@ export default function Dashboard() {
       fetchAll<BudgetItem>('wedding_budget'),
       fetchAll<WeddingTable>('wedding_tables'),
       fetchAll<SeatAssignment>('wedding_seat_assignments'),
-    ]).then(([se, h, g, r, t, b, tb, sa]) => {
+      fetchAll<WeddingGift>('wedding_gifts'),
+    ]).then(([se, h, g, r, t, b, tb, sa, gf]) => {
       setSettings(se); setHouseholds(h); setGuests(g); setRsvps(r)
-      setTasks(t); setBudget(b); setTables(tb); setSeats(sa)
+      setTasks(t); setBudget(b); setTables(tb); setSeats(sa); setGifts(gf)
       setLoading(false)
     })
   }, [])
@@ -81,6 +84,8 @@ export default function Dashboard() {
   }, [budget])
   const spent = budgetTotals.act || budgetTotals.est
   const perHead = seatsAllotted > 0 ? spent / seatsAllotted : 0
+  const tableCount = tablesNeeded(seatsAllotted, tables)
+  const perTable = tableCount > 0 ? spent / tableCount : 0
 
   // ── Seating ──
   const capacity = tables.reduce((n, t) => n + (t.capacity || 0), 0)
@@ -90,6 +95,18 @@ export default function Dashboard() {
   // ── Addresses ──
   const addressed = households.filter(hasAddress).length
   const sent = households.filter(h => h.invitation_sent_at).length
+
+  // ── Gifts ── Summed per currency rather than blindly across all of them —
+  // a red envelope isn't always USD.
+  const giftsByCurrency = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const g of gifts) {
+      const amt = Number(g.amount) || 0
+      m.set(g.currency, (m.get(g.currency) ?? 0) + amt)
+    }
+    return [...m.entries()]
+  }, [gifts])
+  const giftHouseholds = new Set(gifts.map(g => g.household_id).filter(Boolean)).size
 
   // ── RSVP extras ── Free text nobody else on the site surfaces: Guests shows
   // only a "dietary" tag, and song requests / guest notes have nowhere else to
@@ -153,14 +170,16 @@ export default function Dashboard() {
             value={capacity || '—'}
             accent={overCapacity ? 'text-rose-400' : undefined}
           />
+          <Stat label="Tables needed" value={tableCount || '—'} />
+          <Stat label="Cost per table" value={perTable > 0 ? money(perTable) : '—'} />
           <Stat label="Attending" value={attending} accent="text-emerald-400" />
           <Stat label="Declined" value={declined} accent="text-rose-400" />
-          <Stat label="Cost per head" value={perHead > 0 ? money(perHead) : '—'} />
           <Stat
             label="Budget outstanding"
             value={budgetTotals.outstanding > 0 ? money(budgetTotals.outstanding) : '—'}
             accent={budgetTotals.outstanding > 0 ? 'text-amber-400' : undefined}
           />
+          <Stat label="Cost per head" value={perHead > 0 ? money(perHead) : '—'} />
           <Stat label="Addressed" value={`${addressed}/${households.length}`} />
           <Stat label="Invitations sent" value={`${sent}/${households.length}`} />
         </div>
@@ -286,6 +305,34 @@ export default function Dashboard() {
               <li className="flex items-center justify-between">
                 <span className="text-zinc-300">Paid</span>
                 <span className="tabular-nums text-zinc-50">{money(budgetTotals.paid)}</span>
+              </li>
+            </ul>
+          )}
+        </Panel>
+
+        {/* ── Gifts ── */}
+        <Panel>
+          <div className="flex items-baseline justify-between mb-4">
+            <Label>Gifts received</Label>
+            <Link to="/admin/gifts" className="text-[10px] tracking-[0.15em] uppercase text-zinc-500 hover:text-zinc-300">
+              Gifts →
+            </Link>
+          </div>
+          {gifts.length === 0 ? (
+            <p className="text-sm text-zinc-600">None logged yet.</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {giftsByCurrency.map(([currency, total]) => (
+                <li key={currency} className="flex items-center justify-between">
+                  <span className="text-zinc-300">Total ({currency})</span>
+                  <span className="tabular-nums text-zinc-50">
+                    {currency === 'USD' ? money(total) : `${total.toLocaleString()} ${currency}`}
+                  </span>
+                </li>
+              ))}
+              <li className="flex items-center justify-between">
+                <span className="text-zinc-300">From</span>
+                <span className="tabular-nums text-zinc-50">{giftHouseholds} households</span>
               </li>
             </ul>
           )}

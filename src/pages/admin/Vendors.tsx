@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchAll, insertRow, updateRow, deleteRow, type Vendor, type VendorStatus } from '../../lib/planning'
 import { PageHeader, Panel, TextInput, Select, Btn, Empty, Stat } from '../../components/admin/AdminUI'
 
-const CATEGORIES = ['Venue', 'Catering', 'Photography', 'Video', 'Florist', 'Music', 'Cake', 'Attire', 'Rentals', 'Other']
+const CATEGORIES = ['Venue', 'Catering', 'Photography', 'Video', 'Florist', 'Music', 'Cake', 'Attire', 'Rentals', 'Tea Ceremony', 'Other']
 const STATUS_STYLE: Record<VendorStatus, string> = {
   booked: 'text-emerald-400',
   considering: 'text-amber-400',

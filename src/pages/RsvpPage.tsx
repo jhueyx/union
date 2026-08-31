@@ -19,6 +19,12 @@ async function loadMeals(): Promise<MealOption[]> {
     .order('position', { ascending: true })
   return (data ?? []) as MealOption[]
 }
+
+/** True for a fixed banquet menu — skips the per-guest meal-choice step. */
+async function loadSingleMenu(): Promise<boolean> {
+  const { data } = await supabase.from('wedding_settings').select('single_menu').eq('id', true).maybeSingle()
+  return Boolean(data?.single_menu)
+}
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 
@@ -67,7 +73,11 @@ async function lookupHousehold(query: string): Promise<HouseholdWithGuests | nul
 export default function RsvpPage() {
   const [step, setStep] = useState<Step>('lookup')
   const [meals, setMeals] = useState<MealOption[]>([])
-  useEffect(() => { loadMeals().then(setMeals) }, [])
+  const [singleMenu, setSingleMenu] = useState(false)
+  useEffect(() => {
+    loadMeals().then(setMeals)
+    loadSingleMenu().then(setSingleMenu)
+  }, [])
   const [query, setQuery] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -252,43 +262,47 @@ export default function RsvpPage() {
                 <p className="text-sm font-medium text-zinc-900 mb-4">
                   {gs.guest.first_name} {gs.guest.last_name}
                 </p>
-                <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-3">
-                  Meal Selection
-                </p>
-                <div className="space-y-2 mb-5">
-                  {meals.map((meal) => (
-                    <label key={meal.id} className="flex items-start gap-3 cursor-pointer group">
-                      <span
-                        className={[
-                          'mt-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors',
-                          gs.mealChoiceId === meal.id
-                            ?'border-zinc-900'
-                            :'border-zinc-300 group-hover:border-zinc-500',
-                        ].join(' ')}
-                        aria-hidden="true"
-                      >
-                        {gs.mealChoiceId === meal.id && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-900"/>
-                        )}
-                      </span>
-                      <input
-                        type="radio"
-                        name={`meal-${gs.guest.id}`}
-                        checked={gs.mealChoiceId === meal.id}
-                        onChange={() => setMeal(gs.guest.id, meal.id)}
-                        className="sr-only"
-                      />
-                      <span className="text-sm text-zinc-700">
-                        {meal.label}
-                        {meal.description && (
-                          <span className="block text-xs text-zinc-600">
-                            {meal.description}
+                {!singleMenu && (
+                  <>
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-600 mb-3">
+                      Meal Selection
+                    </p>
+                    <div className="space-y-2 mb-5">
+                      {meals.map((meal) => (
+                        <label key={meal.id} className="flex items-start gap-3 cursor-pointer group">
+                          <span
+                            className={[
+                              'mt-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors',
+                              gs.mealChoiceId === meal.id
+                                ?'border-zinc-900'
+                                :'border-zinc-300 group-hover:border-zinc-500',
+                            ].join(' ')}
+                            aria-hidden="true"
+                          >
+                            {gs.mealChoiceId === meal.id && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-900"/>
+                            )}
                           </span>
-                        )}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                          <input
+                            type="radio"
+                            name={`meal-${gs.guest.id}`}
+                            checked={gs.mealChoiceId === meal.id}
+                            onChange={() => setMeal(gs.guest.id, meal.id)}
+                            className="sr-only"
+                          />
+                          <span className="text-sm text-zinc-700">
+                            {meal.label}
+                            {meal.description && (
+                              <span className="block text-xs text-zinc-600">
+                                {meal.description}
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
                 <Input
                   label="Dietary Restrictions"
                   placeholder="Allergies, preferences, etc. (optional)"

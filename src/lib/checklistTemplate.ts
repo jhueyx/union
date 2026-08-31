@@ -61,6 +61,7 @@ export const CHECKLIST_TEMPLATE: TemplateTask[] = [
   { days: 3 * MONTH, title: 'Order wedding rings', category: 'Attire' },
   { days: 3 * MONTH, title: 'Confirm the day-of timeline with all vendors', category: 'Other' },
   { days: 3 * MONTH, title: 'Book hair and makeup, and a trial', category: 'Attire' },
+  { days: 3 * MONTH, title: 'Buy tea ceremony gifts for parents and elders (jewelry, red packets)', category: 'Tea Ceremony' },
 
   // ── 2 months ──
   { days: 2 * MONTH, title: 'Send the invitations', category: 'Paper' },
@@ -68,6 +69,7 @@ export const CHECKLIST_TEMPLATE: TemplateTask[] = [
   { days: 2 * MONTH, title: 'First dress fitting', category: 'Attire' },
   { days: 2 * MONTH, title: 'Write the ceremony vows', category: 'Other' },
   { days: 2 * MONTH, title: 'Order favours and place cards', category: 'Paper' },
+  { days: 2 * MONTH, title: 'Confirm the tea ceremony order — who pours, who is served first', category: 'Tea Ceremony' },
 
   // ── 6 weeks ──
   { days: 42, title: 'Chase anyone who has not RSVP’d', category: 'Paper' },
@@ -80,22 +82,26 @@ export const CHECKLIST_TEMPLATE: TemplateTask[] = [
   { days: MONTH, title: 'Confirm the photographer’s shot list', category: 'Photos' },
   { days: MONTH, title: 'Write the speeches', category: 'Other' },
   { days: MONTH, title: 'Pay remaining vendor balances', category: 'Other' },
+  { days: MONTH, title: 'Buy or rent the tea ceremony set (teapot, cups, tray)', category: 'Tea Ceremony' },
 
   // ── 2 weeks ──
   { days: 14, title: 'Give the caterer the final headcount', category: 'Food' },
   { days: 14, title: 'Finalise the seating chart', category: 'Other' },
   { days: 14, title: 'Confirm arrival times with every vendor', category: 'Other' },
   { days: 14, title: 'Break in the wedding shoes', category: 'Attire' },
+  { days: 14, title: 'Confirm the tea ceremony room and morning-of timeline', category: 'Tea Ceremony' },
 
   // ── 1 week ──
   { days: 7, title: 'Pack for the honeymoon', category: 'Travel' },
   { days: 7, title: 'Assemble tips and final payments in envelopes', category: 'Other' },
   { days: 7, title: 'Deliver the timeline to the wedding party', category: 'Other' },
   { days: 7, title: 'Confirm hair and makeup call times', category: 'Attire' },
+  { days: 7, title: 'Prepare red packets (lai see) for the tea ceremony and banquet', category: 'Tea Ceremony' },
 
   // ── The last days ──
   { days: 2, title: 'Rehearsal and rehearsal dinner', category: 'Other' },
   { days: 1, title: 'Drop off decor and place cards at the venue', category: 'Flowers' },
   { days: 1, title: 'Steam the dress and press the suits', category: 'Attire' },
+  { days: 1, title: 'Pack the tea ceremony set, gifts and red packets', category: 'Tea Ceremony' },
   { days: 1, title: 'Get an early night', category: 'Other' },
 ]

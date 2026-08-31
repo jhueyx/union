@@ -60,6 +60,7 @@ export const SITE_MODE: SiteMode = 'coming-soon' // or 'live'
 | `/admin/timeline` | `src/pages/admin/Timeline.tsx` | Live — day-of running order |
 | `/admin/budget` | `src/pages/admin/Budget.tsx` | Live — estimates vs. actuals |
 | `/admin/vendors` | `src/pages/admin/Vendors.tsx` | Live — considering/booked/declined |
+| `/admin/gifts` | `src/pages/admin/Gifts.tsx` | Live — red envelope / cash gift tracker |
 | `/admin/exports` | `src/pages/admin/Exports.tsx` | Live — addresses, catering, seating chart as copy/print text |
 | `/admin/settings` | `src/pages/admin/Settings.tsx` | Live — wedding date, venue, RSVP deadline, meal options |
 
@@ -145,35 +146,64 @@ lives at `/admin/guests`, not here; don't reintroduce it on the Dashboard.
 
 ## The planner
 
-Six more tables back the planning suite, all admin-only (RLS requires
+Seven more tables back the planning suite, all admin-only (RLS requires
 `auth.role() = 'authenticated'`) except where noted, all accessed through
 `src/lib/planning.ts` (see "Admin writes must report failure" below):
 
 - **`wedding_settings`** — one row, `id = true` enforced by a check constraint.
   `wedding_date`, `ceremony_time`, `venue_name`, `venue_address`,
-  `rsvp_deadline`, `guest_target`, `notes`. This is the fixed point the whole
-  planner measures from — without a date the checklist can't say what's
-  overdue and the Dashboard can't show days-to-go. Set at `/admin/settings`.
-  **Does not drive the public site** — `src/config.ts` does, and the two are
-  not wired together (see below).
+  `rsvp_deadline`, `guest_target`, `notes`, `single_menu`. This is the fixed
+  point the whole planner measures from — without a date the checklist can't
+  say what's overdue and the Dashboard can't show days-to-go. Set at
+  `/admin/settings`. Publicly readable (`RsvpPage.tsx` needs `single_menu`),
+  admin-only to write. **Does not drive the public site** — `src/config.ts`
+  does, and the two are not wired together (see below).
 - **`wedding_meals`** — meal options for the RSVP flow. `id` (slug), `label`,
   `description`, `dietary_tags[]`, `is_child_meal`, `position`. Publicly
   readable (guests need it during RSVP, which is unauthenticated), admin-only
   to write. Managed at `/admin/settings`. `RsvpPage.tsx` fetches this directly
   from Supabase rather than through `planning.ts`, since it's on the public
-  site.
+  site. **Not used at all** when `wedding_settings.single_menu` is on — see
+  "Banquet style" below.
 - **`wedding_tasks`** — the checklist. Seeded from `CHECKLIST_TEMPLATE` in
-  `src/lib/checklistTemplate.ts`, a ~55-item standard wedding list expressed as
-  day-offsets before the wedding (`{ days: 90, title: '...', category: '...' }`).
-  Seeding is additive and keyed on title — safe to re-run after the date moves
-  or after adding tasks by hand; it tops up rather than replaces.
+  `src/lib/checklistTemplate.ts`, a ~60-item standard wedding list (including a
+  Tea Ceremony thread — see below) expressed as day-offsets before the wedding
+  (`{ days: 90, title: '...', category: '...' }`). Seeding is additive and
+  keyed on title — safe to re-run after the date moves or after adding tasks
+  by hand; it tops up rather than replaces.
 - **`wedding_timeline`** — day-of running order. Times are stored as a bare
   `time`, not a timestamp — the schedule is relative to the day, not a timezone.
 - **`wedding_budget`** — line items, `estimated`/`actual`/`paid`, optionally
   tied to a vendor.
 - **`wedding_vendors`** — directory, `status: considering | booked | declined`.
+- **`wedding_gifts`** — red envelope / cash gift log. `household_id` nullable
+  with a `given_by` text fallback (a gift can arrive from someone not on the
+  guest list), `amount`, `currency` (defaults `'USD'`, free entry — sums are
+  grouped per currency rather than blindly added together), `note`,
+  `received_at`. Fully admin-only, no public policy — this is money. Managed
+  at `/admin/gifts`; totalled on the Dashboard.
 - **`wedding_tables`** / **`wedding_seat_assignments`** — the seating floor
   plan (already existed before this section was written up).
+
+### Banquet style (`wedding_settings.single_menu`)
+
+Off by default (per-guest meal choice, Western plated service). On means one
+fixed menu served to every table — the norm for a Chinese banquet — and:
+- `RsvpPage.tsx` skips the "Meal Selection" step entirely; guests only confirm
+  attendance and leave dietary notes.
+- `/admin/exports`'s catering report swaps the per-meal breakdown for a table
+  count (see `tablesNeeded()` below) instead of counts by `wedding_meals.label`.
+- `/admin/settings` grays out the Meal options manager with a note, but leaves
+  the data in place in case the toggle goes back off.
+
+### Table math
+
+`tablesNeeded(seats, tables)` in `planning.ts` estimates how many banquet
+tables a seat count needs — averaging the capacity of whatever's actually on
+the floor plan, or `DEFAULT_TABLE_SIZE` (10, the standard Chinese-banquet
+round table) if no tables exist yet. Backs "Tables needed" and "Cost per
+table" on the Dashboard and the catering export's table count under Banquet
+style — the number a banquet hall actually quotes against, not cost per head.
 
 ### Date math
 
@@ -191,9 +221,10 @@ downloaded file lands in a folder and is never seen again, while these get
 pasted into an email or printed:
 - **Addresses** — one block per household with an address, name(s) plus the
   mailing address, for a calligrapher or label sheet.
-- **Catering** — headcount (adults/children), meal counts by
-  `wedding_meals.label`, dietary requirements. Falls back to *everyone
-  invited* until any RSVP has come in, rather than reading zero.
+- **Catering** — headcount (adults/children), then either meal counts by
+  `wedding_meals.label` or a table count (`tablesNeeded()`) under Banquet
+  style, then dietary requirements. Falls back to *everyone invited* until any
+  RSVP has come in, rather than reading zero.
 - **Seating chart** — one section per table with who's seated, from the same
   data as `/admin/seating`.
 

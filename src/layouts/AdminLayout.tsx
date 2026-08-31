@@ -15,6 +15,7 @@ const SECTIONS = [
   { to: '/admin/timeline', label: 'Timeline' },
   { to: '/admin/budget', label: 'Budget' },
   { to: '/admin/vendors', label: 'Vendors' },
+  { to: '/admin/gifts', label: 'Gifts' },
   { to: '/admin/exports', label: 'Exports' },
   { to: '/admin/settings', label: 'Settings' },
 ]

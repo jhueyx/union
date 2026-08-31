@@ -213,7 +213,33 @@ export interface WeddingSettings {
   rsvp_deadline: string | null
   guest_target: number | null
   notes: string | null
+  /** One fixed banquet menu for everyone — skips the per-guest meal-choice
+   *  step in RSVP, which assumes Western plated service by default. */
+  single_menu: boolean
   updated_at?: string
+}
+
+export interface WeddingGift {
+  id: string
+  household_id: string | null
+  /** Fallback label when the giver isn't in the guest list. */
+  given_by: string | null
+  amount: number | null
+  currency: string
+  note: string | null
+  received_at: string | null
+}
+
+/** Table size assumed when no floor plan exists yet to average from. */
+export const DEFAULT_TABLE_SIZE = 10
+
+/** How many banquet tables `seats` needs, from the actual floor plan if one
+ *  exists (averaging its tables' capacity) or the banquet-standard default. */
+export function tablesNeeded(seats: number, tables: { capacity: number }[]): number {
+  const size = tables.length
+    ? tables.reduce((n, t) => n + (t.capacity || 0), 0) / tables.length
+    : DEFAULT_TABLE_SIZE
+  return size > 0 ? Math.ceil(seats / size) : 0
 }
 
 export interface MealOption {

@@ -9,7 +9,7 @@ import {
 import { CHECKLIST_TEMPLATE } from '../../lib/checklistTemplate'
 import { PageHeader, Panel, Label, TextInput, Select, Btn, Empty, Stat } from '../../components/admin/AdminUI'
 
-const CATEGORIES = ['Venue', 'Attire', 'Food', 'Flowers', 'Music', 'Photos', 'Paper', 'Travel', 'Other']
+const CATEGORIES = ['Venue', 'Attire', 'Food', 'Flowers', 'Music', 'Photos', 'Paper', 'Travel', 'Tea Ceremony', 'Other']
 
 export default function Checklist() {
   const [tasks, setTasks] = useState<WeddingTask[]>([])

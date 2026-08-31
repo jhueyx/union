@@ -6,7 +6,7 @@ import {
 } from '../../lib/planning'
 import { PageHeader, Panel, TextInput, Select, Btn, Empty, Stat, Label } from '../../components/admin/AdminUI'
 
-const CATEGORIES = ['Venue', 'Catering', 'Photography', 'Flowers', 'Music', 'Attire', 'Paper', 'Rentals', 'Other']
+const CATEGORIES = ['Venue', 'Catering', 'Photography', 'Flowers', 'Music', 'Attire', 'Paper', 'Rentals', 'Tea Ceremony', 'Other']
 
 export default function Budget() {
   const [items, setItems] = useState<BudgetItem[]>([])
