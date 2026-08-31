@@ -57,21 +57,26 @@ function DraggableGuest({ guest, seated }: { guest: Guest; seated?: boolean }) {
 }
 
 function TableNode({
-  table, seated, onMove, onSelect, selected,
+  table, seated, onMove, onSelect, selected, onRename,
 }: {
   table: WeddingTable
   seated: Guest[]
   onMove: (id: string, x: number, y: number) => void
   onSelect: (id: string) => void
   selected: boolean
+  onRename: (id: string, name: string) => void
 }) {
   const { setNodeRef: dropRef, isOver } = useDroppable({ id: `table:${table.id}` })
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
 
   // Pointer-drag to reposition. Capture keeps the gesture alive if the cursor
-  // leaves the element, which happens constantly when dragging quickly.
+  // leaves the element, which happens constantly when dragging quickly. The
+  // name field is exempted like guest chips are: clicking into it still
+  // selects the table (so Delete is available) but must not start a drag, or
+  // every keystroke would nudge the table across the canvas.
   function onPointerDown(e: React.PointerEvent) {
     if ((e.target as HTMLElement).closest('[data-guest]')) return
+    if ((e.target as HTMLElement).closest('[data-tablename]')) { onSelect(table.id); return }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     dragState.current = { startX: e.clientX, startY: e.clientY, origX: table.pos_x, origY: table.pos_y }
     onSelect(table.id)
@@ -110,7 +115,20 @@ function TableNode({
       }
     >
       <div className="text-center mb-2">
-        <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-400">{table.name}</p>
+        <input
+          data-tablename
+          defaultValue={table.name}
+          onBlur={e => onRename(table.id, e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+            if (e.key === 'Escape') {
+              (e.target as HTMLInputElement).value = table.name
+              ;(e.target as HTMLInputElement).blur()
+            }
+          }}
+          aria-label="Table name"
+          className="w-full text-center text-[10px] tracking-[0.2em] uppercase text-zinc-400 bg-transparent border border-transparent rounded-[2px] px-1 py-0.5 hover:border-zinc-800 focus:border-zinc-600 focus:outline-none focus:text-zinc-200 transition-colors cursor-text"
+        />
         <p className={'text-[10px] tabular-nums ' + (over ? 'text-rose-400' : 'text-zinc-600')}>
           {seated.length}/{table.capacity}
         </p>
@@ -243,6 +261,15 @@ export default function Seating() {
     if (await deleteRow('wedding_tables', id, 'remove table')) { setSelected(null); load() }
   }
 
+  async function renameTable(id: string, raw: string) {
+    const name = raw.trim()
+    const t = tables.find(x => x.id === id)
+    // An empty name would make the table unidentifiable; treat it as a no-op
+    // and let load() put the previous value back in the field.
+    if (!t || !name || name === t.name) { if (!name) load(); return }
+    if (await updateRow('wedding_tables', id, { name }, 'rename table')) load()
+  }
+
   function onDragStart(e: DragStartEvent) {
     const id = String(e.active.id).replace('guest:', '')
     setDragging(guests.find(g => g.id === id) ?? null)
@@ -329,6 +356,7 @@ export default function Seating() {
                   onMove={moveTable}
                   onSelect={setSelected}
                   selected={selected === t.id}
+                  onRename={renameTable}
                 />
               ))}
             </div>
