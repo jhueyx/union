@@ -73,8 +73,8 @@ function StoryTab() {
   return (
     <>
       <p className="text-sm text-zinc-500 mb-4">
-        Shown in order on /story, under the couple's names and a photo
-        placeholder (there's no image upload yet — that's still a code change).
+        Shown in order on /story, under the couple's names and a photo — set
+        that on the Photos tab.
       </p>
       <form onSubmit={add} className="flex gap-2 mb-6">
         <TextInput placeholder="New section heading, e.g. How We Met…" value={heading} onChange={e => setHeading(e.target.value)} className="flex-1" />
