@@ -17,11 +17,13 @@ export default function StoryPage() {
 
       {/* Photo */}
       {photo ? (
-        <img
-          src={photo}
-          alt=""
-          className="w-full aspect-[3/2] object-cover rounded-[2px] mb-16"
-        />
+        <div className="w-full aspect-[3/2] bg-zinc-100 rounded-[2px] mb-16 overflow-hidden">
+          <img
+            src={photo}
+            alt=""
+            className="w-full h-full object-contain"
+          />
+        </div>
       ) : (
         <div className="w-full aspect-[3/2] bg-zinc-100 border border-zinc-200 rounded-[2px] mb-16 flex items-center justify-center">
           <p className="text-xs tracking-[0.2em] uppercase text-zinc-600">
