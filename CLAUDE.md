@@ -49,7 +49,7 @@ publicly readable, no deploy needed to flip it:
 | `/i/:inviteCode` | `src/pages/InviteCode.tsx` | Live — personalized invite landing |
 | `/schedule` | `src/pages/SchedulePage.tsx` | Live — reads `wedding_events` |
 | `/travel` | `src/pages/TravelPage.tsx` | Live — reads `wedding_travel` |
-| `/registry` | `src/pages/RegistryPage.tsx` | Live — reads `wedding_registry` |
+| `/registry` | `src/pages/RegistryPage.tsx` | Live — "Gifts" in the nav/UI (URL kept as `/registry` to avoid breaking links/`nav_visibility`); reads `wedding_settings.gift_message`, no store links |
 | `/faq` | `src/pages/FaqPage.tsx` | Live — reads `wedding_faq` |
 | `/photos` | `src/pages/PhotosPage.tsx` | Live — reads `wedding_photos`; not linked from `Nav.tsx`/`NAV_LINKS` yet (a call for the couple, not made here) |
 | `/guestbook` | `src/pages/GuestbookPage.tsx` | Placeholder |
@@ -61,11 +61,11 @@ publicly readable, no deploy needed to flip it:
 | `/admin/budget` | `src/pages/admin/Budget.tsx` | Live — estimates vs. actuals |
 | `/admin/vendors` | `src/pages/admin/Vendors.tsx` | Live — considering/booked/declined |
 | `/admin/gifts` | `src/pages/admin/Gifts.tsx` | Live — red envelope / cash gift tracker |
-| `/admin/content` | `src/pages/admin/Content.tsx` | Live — edits Story, Photos, FAQ, Travel, Registry, and the public Schedule |
+| `/admin/content` | `src/pages/admin/Content.tsx` | Live — edits Story, Photos, FAQ, Travel, Gifts, and the public Schedule |
 | `/admin/exports` | `src/pages/admin/Exports.tsx` | Live — addresses, catering, seating chart as copy/print text |
 | `/admin/settings` | `src/pages/admin/Settings.tsx` | Live — site status, wedding date, venue, RSVP deadline, meal options |
 
-Nav order: Our Story · Save the Date · Invite · RSVP · Schedule · Travel · Registry · FAQ
+Nav order: Our Story · Save the Date · Invite · RSVP · Schedule · Travel · Gifts · FAQ
 
 ## Key files
 
@@ -185,7 +185,7 @@ Seven more tables back the planning suite, all admin-only (RLS requires
 ### The public site is database-driven
 
 `src/config.ts` and `src/data/mock.ts` are **dead code** — nothing imports
-from them any more. The site reads live from five public-readable,
+from them any more. The site reads live from four public-readable,
 admin-write tables (edited at `/admin/content`), plus `wedding_settings`:
 
 - **`wedding_story`** — `heading`, `body`, `position`. Backs `/story`, in
@@ -196,7 +196,6 @@ admin-write tables (edited at `/admin/content`), plus `wedding_settings`:
 - **`wedding_travel`** — `type` (`hotel | transport | activity | restaurant`,
   checked), `name`, `address`, `url`, `note`, `price_range`, `booking_code`,
   `position`. Backs `/travel`.
-- **`wedding_registry`** — `store`, `url`, `note`, `position`. Backs `/registry`.
 - **`wedding_events`** — the **guest-facing** schedule shown on `/schedule` and
   `/invitation`: `name`, `time_label`, `end_time_label` (free-text display
   strings like `"5:00 PM"`, not real `time` columns — this is what a guest
@@ -205,9 +204,14 @@ admin-write tables (edited at `/admin/content`), plus `wedding_settings`:
   the internal day-of running order, which can carry vendor call times and
   other detail not meant for guests — don't conflate the two.
 
-All five: RLS `select using (true)`, admin `for all using (auth.role() =
+All four: RLS `select using (true)`, admin `for all using (auth.role() =
 'authenticated')` — same shape as `wedding_meals`. `position` is set to the
 list length at insert time (append order); there's no drag-to-reorder yet.
+
+The old `wedding_registry` table (`store`, `url`, `note`, `position`) is no
+longer read by the site — `/registry` (the "Gifts" page) dropped registry
+links entirely in favor of a single message. The table itself was left in
+place rather than dropped; nothing references it any more. See "Gifts" below.
 
 `wedding_settings.nav_visibility` is a `jsonb` object keyed by nav route path
 (e.g. `{"/travel": false}`); a path missing from it is visible — default-on,
@@ -218,12 +222,12 @@ checklist can't drift apart). Hiding a page only removes it from the nav — the
 route itself is still reachable by direct link, same as the rest of the site
 in coming-soon mode.
 
-`src/lib/siteContent.tsx` fetches `wedding_settings` + all five content tables
+`src/lib/siteContent.tsx` fetches `wedding_settings` + all four content tables
 once, at the `RootLayout` root (mounted for every public route, not `/admin`).
 `SiteContentProvider` renders `null` while that first fetch is in flight —
 same gate `AdminLayout` uses for the auth session — so a visitor never sees a
 flash of `coming-soon` before the real `site_mode` lands. `useSiteContent()`
-hands back `{ isLive, wedding, events, travel, registry, faq, story,
+hands back `{ isLive, wedding, events, travel, faq, story, giftMessage,
 isNavVisible }`; `wedding` is shaped to match the old `config.ts` `WEDDING`
 object closely (`coupleNames`, `date`, `dateShort`, `time`, `dateTimeISO`,
 `rsvpDeadline`, `dressCode`, `venue: { name, address, city, mapsUrl }`) so the
@@ -232,7 +236,16 @@ display components barely changed. Pure formatting (`formatDay`,
 — that module is admin-only (reads `supabase` with the assumption of an
 authenticated caller) and must not be imported from public pages.
 
-Editing `wedding_settings` or any of the five content tables at
+### Gifts (`/registry`, `wedding_settings.gift_message`)
+
+The couple doesn't want a traditional registry. `/registry` (nav label
+"Gifts") shows a single paragraph — `wedding_settings.gift_message`, edited
+as a plain textarea on the Gifts tab of `/admin/content`
+(`GiftsTab` in `Content.tsx`), falling back to `DEFAULT_GIFT_MESSAGE` in
+`siteContent.tsx` when unset. No store list, no URLs, no payment or
+cash-transfer functionality — just the message.
+
+Editing `wedding_settings` or any of the four content tables at
 `/admin/settings` / `/admin/content` takes effect on the live site immediately
 — no deploy, no waiting on Vercel.
 
@@ -388,7 +401,7 @@ No manual `vercel --prod` needed. `vercel.json` has a catch-all rewrite for Reac
 
 1. Set the wedding date, venue, dress code at `/admin/settings`
 2. Add meal options at `/admin/settings` — RSVP can't be completed without at least one (unless Banquet style is on)
-3. Fill in Story, Photos, FAQ, Travel, Registry, and Schedule at `/admin/content`
+3. Fill in Story, Photos, FAQ, Travel, Gifts, and Schedule at `/admin/content`
 4. Uncheck any page not ready yet in **Page visibility** at `/admin/settings`, so it doesn't show in the nav once live
 5. Add guests via `/admin/guests`; addresses if invitations are going out by mail
 6. ~~Set custom domain~~ — done: `sallyjason.com` is live and pointed at the `union` Vercel project

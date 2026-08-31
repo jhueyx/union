@@ -11,16 +11,17 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   fetchAll, insertRow, updateRow, deleteRow, fetchSettings, saveSettings,
-  type FaqItem, type TravelItem, type RegistryItem, type PublicEvent, type StoryItem,
+  type FaqItem, type TravelItem, type PublicEvent, type StoryItem,
   type PhotoItem, type WeddingSettings,
 } from '../../lib/planning'
+import { DEFAULT_GIFT_MESSAGE } from '../../lib/siteContent'
 import { photoUrl, uploadPhoto, deletePhotoFile } from '../../lib/photos'
 import { PageHeader, Panel, Label, TextInput, Select, Btn, Empty } from '../../components/admin/AdminUI'
 
-type View = 'story' | 'photos' | 'faq' | 'travel' | 'registry' | 'schedule'
+type View = 'story' | 'photos' | 'faq' | 'travel' | 'gifts' | 'schedule'
 const VIEWS: [View, string][] = [
   ['story', 'Story'], ['photos', 'Photos'], ['faq', 'FAQ'], ['travel', 'Travel'],
-  ['registry', 'Registry'], ['schedule', 'Schedule'],
+  ['gifts', 'Gifts'], ['schedule', 'Schedule'],
 ]
 
 const TEXTAREA_CLS =
@@ -380,58 +381,33 @@ function TravelTab() {
   )
 }
 
-// ── Registry ─────────────────────────────────────────────────────────────
+// ── Gifts ────────────────────────────────────────────────────────────────
+// No registry links — just the message shown on /registry explaining the
+// couple's preference. See DEFAULT_GIFT_MESSAGE in siteContent.tsx.
 
-function RegistryTab() {
-  const [items, setItems] = useState<RegistryItem[]>([])
+function GiftsTab() {
+  const [settings, setSettings] = useState<WeddingSettings | null>(null)
   const [loading, setLoading] = useState(true)
-  const [store, setStore] = useState('')
-  const [url, setUrl] = useState('')
 
-  async function load() {
-    setItems(await fetchAll<RegistryItem>('wedding_registry', 'position'))
-    setLoading(false)
-  }
-  useEffect(() => { load() }, [])
+  useEffect(() => { fetchSettings().then(s => { setSettings(s); setLoading(false) }) }, [])
 
-  async function add(e: React.FormEvent) {
-    e.preventDefault()
-    if (!store.trim() || !url.trim()) return
-    const row = await insertRow<RegistryItem>('wedding_registry', {
-      store: store.trim(), url: url.trim(), note: null, position: items.length,
-    }, 'add registry item')
-    if (row) { setStore(''); setUrl(''); load() }
+  async function setMessage(value: string) {
+    if (await saveSettings({ gift_message: value.trim() || null })) {
+      setSettings(s => s && { ...s, gift_message: value.trim() || null })
+    }
   }
 
-  async function setField(item: RegistryItem, field: 'store' | 'url' | 'note', value: string) {
-    if (!value && field !== 'note') return // store/url can't be blanked to empty
-    if (await updateRow('wedding_registry', item.id, { [field]: field === 'note' ? (value || null) : value }, 'update registry item')) load()
-  }
-
-  if (loading) return <Empty>Loading…</Empty>
+  if (loading || !settings) return <Empty>Loading…</Empty>
   return (
     <>
-      <form onSubmit={add} className="flex flex-wrap gap-2 mb-6">
-        <TextInput placeholder="Store…" value={store} onChange={e => setStore(e.target.value)} className="flex-1 min-w-[140px]" />
-        <TextInput placeholder="Registry URL…" value={url} onChange={e => setUrl(e.target.value)} className="flex-1 min-w-[200px]" />
-        <Btn variant="primary" type="submit">Add</Btn>
-      </form>
-      {items.length === 0 ? <Empty>No registry links yet.</Empty> : (
-        <div className="space-y-3">
-          {items.map(item => (
-            <Row key={item.id} onRemove={async () => { if (await deleteRow('wedding_registry', item.id, 'remove registry item')) load() }}>
-              <div className="flex flex-wrap gap-2">
-                <TextInput defaultValue={item.store} onBlur={e => setField(item, 'store', e.target.value)} className="w-40" aria-label="Store" />
-                <TextInput defaultValue={item.url} onBlur={e => setField(item, 'url', e.target.value)} className="flex-1 min-w-[200px]" aria-label="URL" />
-              </div>
-              <TextInput
-                defaultValue={item.note ?? ''} onBlur={e => setField(item, 'note', e.target.value)}
-                placeholder="Note (optional)" className="w-full" aria-label="Note"
-              />
-            </Row>
-          ))}
-        </div>
-      )}
+      <p className="text-sm text-zinc-500 mb-4">
+        Shown on /registry in place of a traditional gift registry.
+      </p>
+      <textarea
+        defaultValue={settings.gift_message ?? DEFAULT_GIFT_MESSAGE}
+        onBlur={e => setMessage(e.target.value)}
+        rows={5} className={TEXTAREA_CLS} aria-label="Gift message"
+      />
     </>
   )
 }
@@ -530,7 +506,7 @@ export default function Content() {
       {view === 'photos' && <PhotosTab />}
       {view === 'faq' && <FaqTab />}
       {view === 'travel' && <TravelTab />}
-      {view === 'registry' && <RegistryTab />}
+      {view === 'gifts' && <GiftsTab />}
       {view === 'schedule' && <ScheduleTab />}
     </div>
   )

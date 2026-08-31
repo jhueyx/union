@@ -228,6 +228,9 @@ export interface WeddingSettings {
   /** Coming-soon landing copy, one paragraph per line. Null falls back to the
    *  default copy baked into Hero.tsx. */
   coming_soon_message: string | null
+  /** Gifts page copy. Null falls back to the default copy baked into
+   *  RegistryPage.tsx. No registry links — see DEFAULT_GIFT_MESSAGE. */
+  gift_message: string | null
   /** Keyed by nav route path (e.g. "/story"). A path missing from this object
    *  is visible — default-on, so adding a column changed nothing until
    *  someone actually unchecks a page. */
@@ -261,14 +264,6 @@ export interface TravelItem {
   note: string | null
   price_range: string | null
   booking_code: string | null
-  position: number
-}
-
-export interface RegistryItem {
-  id: string
-  store: string
-  url: string
-  note: string | null
   position: number
 }
 
