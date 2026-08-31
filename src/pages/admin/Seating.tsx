@@ -301,7 +301,12 @@ export default function Seating() {
             {addingTable ? 'Adding…' : 'Add table'}
           </Btn>
           {selectedTable && (
-            <Btn variant="danger" onClick={() => removeTable(selectedTable.id)}>
+            // type="button" is load-bearing: this button sits inside the
+            // add-table <form>, and a <button> with no explicit type defaults
+            // to type="submit" — so without this, clicking Delete also
+            // submitted the form and created a new blank table in the same
+            // click. That's how the last round of duplicates happened.
+            <Btn type="button" variant="danger" onClick={() => removeTable(selectedTable.id)}>
               Delete {selectedTable.name}
             </Btn>
           )}
