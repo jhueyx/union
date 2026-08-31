@@ -8,6 +8,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
 import { formatDay, formatDayShort, formatTime } from './dates'
+import { photoUrl } from './photos'
 
 export type SiteMode = 'coming-soon' | 'live'
 
@@ -24,6 +25,8 @@ interface SettingsRow {
   rsvp_deadline: string | null
   coming_soon_message: string | null
   nav_visibility: Record<string, boolean> | null
+  story_photo_path: string | null
+  save_the_date_photo_path: string | null
 }
 
 /** The nav's fixed set of links — shared with /admin/settings so the page
@@ -58,6 +61,7 @@ export interface PublicEvent {
   location: string | null; address: string | null; description: string | null; dresscode: string | null
 }
 export interface StoryItem { id: string; heading: string; body: string }
+export interface PhotoItem { id: string; url: string; caption: string | null }
 
 /** Formatted, display-ready wedding details — shaped to match the old
  *  config.ts WEDDING object closely, so components barely change. */
@@ -72,6 +76,8 @@ export interface WeddingDisplay {
   rsvpDeadline: string
   dressCode: string
   venue: { name: string; address: string; city: string; mapsUrl: string }
+  storyPhotoUrl: string | null
+  saveTheDatePhotoUrl: string | null
 }
 
 interface SiteContent {
@@ -87,17 +93,19 @@ interface SiteContent {
   registry: RegistryItem[]
   faq: FaqItem[]
   story: StoryItem[]
+  photos: PhotoItem[]
 }
 
 const EMPTY_WEDDING: WeddingDisplay = {
   coupleNames: 'Sally & Jason', date: '', dateShort: '', time: '', dateTimeISO: '',
   rsvpDeadline: '', dressCode: '', venue: { name: '', address: '', city: '', mapsUrl: '' },
+  storyPhotoUrl: null, saveTheDatePhotoUrl: null,
 }
 
 const FALLBACK: SiteContent = {
   isLive: false, wedding: EMPTY_WEDDING, comingSoonMessage: DEFAULT_COMING_SOON_MESSAGE,
   isNavVisible: () => true,
-  events: [], travel: [], registry: [], faq: [], story: [],
+  events: [], travel: [], registry: [], faq: [], story: [], photos: [],
 }
 
 function toComingSoonMessage(s: SettingsRow | null): string[] {
@@ -121,6 +129,8 @@ function toDisplay(s: SettingsRow | null): WeddingDisplay {
       city: s.venue_city ?? '',
       mapsUrl: s.venue_maps_url ?? '',
     },
+    storyPhotoUrl: photoUrl(s.story_photo_path),
+    saveTheDatePhotoUrl: photoUrl(s.save_the_date_photo_path),
   }
 }
 
@@ -137,7 +147,8 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
       supabase.from('wedding_registry').select('*').order('position'),
       supabase.from('wedding_faq').select('*').order('position'),
       supabase.from('wedding_story').select('*').order('position'),
-    ]).then(([settings, events, travel, registry, faq, story]) => {
+      supabase.from('wedding_photos').select('*').order('position'),
+    ]).then(([settings, events, travel, registry, faq, story, photos]) => {
       const row = (settings.data as SettingsRow | null) ?? null
       const hidden = row?.nav_visibility ?? {}
       setContent({
@@ -150,6 +161,8 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
         registry: (registry.data ?? []) as RegistryItem[],
         faq: (faq.data ?? []) as FaqItem[],
         story: (story.data ?? []) as StoryItem[],
+        photos: ((photos.data ?? []) as { id: string; storage_path: string; caption: string | null }[])
+          .map(p => ({ id: p.id, url: photoUrl(p.storage_path) as string, caption: p.caption })),
       })
     }).catch(() => setContent(FALLBACK))
   }, [])

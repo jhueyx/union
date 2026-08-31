@@ -232,6 +232,10 @@ export interface WeddingSettings {
    *  is visible — default-on, so adding a column changed nothing until
    *  someone actually unchecks a page. */
   nav_visibility: Record<string, boolean>
+  /** Storage path in the wedding-photos bucket, not a resolved URL — see
+   *  src/lib/photos.ts. */
+  story_photo_path: string | null
+  save_the_date_photo_path: string | null
   updated_at?: string
 }
 
@@ -288,6 +292,14 @@ export interface StoryItem {
   id: string
   heading: string
   body: string
+  position: number
+}
+
+/** One photo in the /photos gallery — storage_path resolves via photoUrl(). */
+export interface PhotoItem {
+  id: string
+  storage_path: string
+  caption: string | null
   position: number
 }
 

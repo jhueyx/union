@@ -3,6 +3,7 @@ import { useSiteContent } from '../lib/siteContent'
 
 export default function StoryPage() {
   const { story, wedding } = useSiteContent()
+  const photo = wedding.storyPhotoUrl
 
   return (
     <div className="max-w-[700px] mx-auto px-6 py-20 md:py-28">
@@ -14,12 +15,20 @@ export default function StoryPage() {
         {wedding.coupleNames}
       </h1>
 
-      {/* Photo placeholder */}
-      <div className="w-full aspect-[3/2] bg-zinc-100 border border-zinc-200 rounded-[2px] mb-16 flex items-center justify-center">
-        <p className="text-xs tracking-[0.2em] uppercase text-zinc-600">
-          Photo
-        </p>
-      </div>
+      {/* Photo */}
+      {photo ? (
+        <img
+          src={photo}
+          alt=""
+          className="w-full aspect-[3/2] object-cover rounded-[2px] mb-16"
+        />
+      ) : (
+        <div className="w-full aspect-[3/2] bg-zinc-100 border border-zinc-200 rounded-[2px] mb-16 flex items-center justify-center">
+          <p className="text-xs tracking-[0.2em] uppercase text-zinc-600">
+            Photo
+          </p>
+        </div>
+      )}
 
       {/* Story sections */}
       <div className="space-y-12 text-sm md:text-base leading-[1.9] text-zinc-600 max-w-[560px] mx-auto">

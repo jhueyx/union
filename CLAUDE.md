@@ -42,8 +42,8 @@ publicly readable, no deploy needed to flip it:
 | Route | File | Status |
 |-------|------|--------|
 | `/` | `src/pages/Home.tsx` | Live — reads `wedding_settings` |
-| `/story` | `src/pages/StoryPage.tsx` | Live — reads `wedding_story`; still needs a real photo (no upload path yet) |
-| `/save-the-date` | `src/pages/SaveTheDate.tsx` | Live — reads `wedding_settings`; still needs an engagement photo |
+| `/story` | `src/pages/StoryPage.tsx` | Live — reads `wedding_story` + `wedding_settings.story_photo_path` |
+| `/save-the-date` | `src/pages/SaveTheDate.tsx` | Live — reads `wedding_settings` incl. `save_the_date_photo_path` |
 | `/invitation` | `src/pages/Invitation.tsx` | Live — reads `wedding_settings` + `wedding_events` |
 | `/rsvp` | `src/pages/RsvpPage.tsx` | Live — reads/writes Supabase |
 | `/i/:inviteCode` | `src/pages/InviteCode.tsx` | Live — personalized invite landing |
@@ -51,7 +51,7 @@ publicly readable, no deploy needed to flip it:
 | `/travel` | `src/pages/TravelPage.tsx` | Live — reads `wedding_travel` |
 | `/registry` | `src/pages/RegistryPage.tsx` | Live — reads `wedding_registry` |
 | `/faq` | `src/pages/FaqPage.tsx` | Live — reads `wedding_faq` |
-| `/photos` | `src/pages/PhotosPage.tsx` | Placeholder |
+| `/photos` | `src/pages/PhotosPage.tsx` | Live — reads `wedding_photos`; not linked from `Nav.tsx`/`NAV_LINKS` yet (a call for the couple, not made here) |
 | `/guestbook` | `src/pages/GuestbookPage.tsx` | Placeholder |
 | `/admin` | `src/pages/admin/Dashboard.tsx` | Live — planner home, see below |
 | `/admin/guests` | `src/pages/admin/Guests.tsx` | Live — households, guests, side, addresses |
@@ -61,7 +61,7 @@ publicly readable, no deploy needed to flip it:
 | `/admin/budget` | `src/pages/admin/Budget.tsx` | Live — estimates vs. actuals |
 | `/admin/vendors` | `src/pages/admin/Vendors.tsx` | Live — considering/booked/declined |
 | `/admin/gifts` | `src/pages/admin/Gifts.tsx` | Live — red envelope / cash gift tracker |
-| `/admin/content` | `src/pages/admin/Content.tsx` | Live — edits Story, FAQ, Travel, Registry, and the public Schedule |
+| `/admin/content` | `src/pages/admin/Content.tsx` | Live — edits Story, Photos, FAQ, Travel, Registry, and the public Schedule |
 | `/admin/exports` | `src/pages/admin/Exports.tsx` | Live — addresses, catering, seating chart as copy/print text |
 | `/admin/settings` | `src/pages/admin/Settings.tsx` | Live — site status, wedding date, venue, RSVP deadline, meal options |
 
@@ -247,6 +247,35 @@ switch is expected to take effect the moment it's clicked. If you add another
 toggle-shaped control to this page, give it the same immediate-save treatment
 rather than folding it into the big form's `Draft`.
 
+### Photos
+
+`src/lib/photos.ts` — the only place that touches Supabase Storage, safe to
+import from public pages (`photoUrl()` is a pure string builder, no auth or
+network call). Backs the `wedding-photos` bucket: public bucket (photos are
+meant to be seen — served straight from the public URL, no signed URLs), RLS
+on `storage.objects` restricts insert/update/delete to `auth.role() =
+'authenticated'`, scoped to `bucket_id = 'wedding-photos'` so it can't touch
+the other apps' buckets sharing this Supabase project (`hl-media`,
+`habits-avatars`). `uploadPhoto()` never trusts the original filename — it
+renames to `{prefix}/{uuid}.{ext}` and rejects anything over 10MB client-side
+before the request goes out.
+
+Three spots, all edited at `/admin/content` → **Photos**:
+- **Story / Save the Date** — one photo each, `wedding_settings.story_photo_path`
+  / `save_the_date_photo_path`. Storing the *path*, not a resolved URL, is
+  deliberate: replacing or removing a photo also deletes the old storage
+  object via `deletePhotoFile()`, so orphaned files don't pile up in the
+  bucket. `PhotoSlot` in `Content.tsx` is the shared upload/replace/remove
+  widget for both.
+- **Gallery** — `wedding_photos` table (`storage_path`, `caption`, `position`),
+  backs `/photos`. Same public-SELECT/admin-write shape as the other content
+  tables. Multi-file upload; each file gets its own row and its own storage
+  object under `gallery/`.
+
+`/photos` itself is **not linked from `Nav.tsx`** (not in `NAV_LINKS`) — it
+was a placeholder page before this and adding it to the nav is a call for the
+couple, not made here. The route works by direct link regardless.
+
 ### Banquet style (`wedding_settings.single_menu`)
 
 Off by default (per-guest meal choice, Western plated service). On means one
@@ -359,12 +388,11 @@ No manual `vercel --prod` needed. `vercel.json` has a catch-all rewrite for Reac
 
 1. Set the wedding date, venue, dress code at `/admin/settings`
 2. Add meal options at `/admin/settings` — RSVP can't be completed without at least one (unless Banquet style is on)
-3. Fill in Story, FAQ, Travel, Registry, and Schedule at `/admin/content`
-4. Add a real photo to Story and Save the Date — no image-upload path exists yet, still needs a code change (both pages currently show a placeholder box)
-5. Uncheck any page not ready yet in **Page visibility** at `/admin/settings`, so it doesn't show in the nav once live
-6. Add guests via `/admin/guests`; addresses if invitations are going out by mail
-7. ~~Set custom domain~~ — done: `sallyjason.com` is live and pointed at the `union` Vercel project
-8. Flip **Site status** to Live at `/admin/settings` — takes effect immediately, no deploy
+3. Fill in Story, Photos, FAQ, Travel, Registry, and Schedule at `/admin/content`
+4. Uncheck any page not ready yet in **Page visibility** at `/admin/settings`, so it doesn't show in the nav once live
+5. Add guests via `/admin/guests`; addresses if invitations are going out by mail
+6. ~~Set custom domain~~ — done: `sallyjason.com` is live and pointed at the `union` Vercel project
+7. Flip **Site status** to Live at `/admin/settings` — takes effect immediately, no deploy
 
 ## Commit and push after every change
 

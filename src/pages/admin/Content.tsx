@@ -8,16 +8,19 @@
 // inline in the list via onBlur — building the list is a different act from
 // filling in every detail, and a giant add form for e.g. seven travel fields
 // would be exactly the kind of friction that keeps a list at zero rows.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  fetchAll, insertRow, updateRow, deleteRow,
+  fetchAll, insertRow, updateRow, deleteRow, fetchSettings, saveSettings,
   type FaqItem, type TravelItem, type RegistryItem, type PublicEvent, type StoryItem,
+  type PhotoItem, type WeddingSettings,
 } from '../../lib/planning'
-import { PageHeader, Panel, TextInput, Select, Btn, Empty } from '../../components/admin/AdminUI'
+import { photoUrl, uploadPhoto, deletePhotoFile } from '../../lib/photos'
+import { PageHeader, Panel, Label, TextInput, Select, Btn, Empty } from '../../components/admin/AdminUI'
 
-type View = 'story' | 'faq' | 'travel' | 'registry' | 'schedule'
+type View = 'story' | 'photos' | 'faq' | 'travel' | 'registry' | 'schedule'
 const VIEWS: [View, string][] = [
-  ['story', 'Story'], ['faq', 'FAQ'], ['travel', 'Travel'], ['registry', 'Registry'], ['schedule', 'Schedule'],
+  ['story', 'Story'], ['photos', 'Photos'], ['faq', 'FAQ'], ['travel', 'Travel'],
+  ['registry', 'Registry'], ['schedule', 'Schedule'],
 ]
 
 const TEXTAREA_CLS =
@@ -93,6 +96,153 @@ function StoryTab() {
           ))}
         </div>
       )}
+    </>
+  )
+}
+
+// ── Photos ───────────────────────────────────────────────────────────────
+
+/** One single-photo slot (Story, Save the Date) — upload/replace/remove,
+ *  with the old storage object cleaned up on replace or remove so nothing
+ *  orphans in the bucket. */
+function PhotoSlot({
+  label, path, prefix, onChange,
+}: {
+  label: string
+  path: string | null
+  prefix: string
+  onChange: (path: string | null) => Promise<void>
+}) {
+  const [busy, setBusy] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBusy(true)
+    const oldPath = path
+    const newPath = await uploadPhoto(file, prefix)
+    if (newPath) {
+      await onChange(newPath)
+      await deletePhotoFile(oldPath)
+    }
+    setBusy(false)
+  }
+
+  async function remove() {
+    setBusy(true)
+    await onChange(null)
+    await deletePhotoFile(path)
+    setBusy(false)
+  }
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="flex items-center gap-4">
+        {path ? (
+          <img src={photoUrl(path) ?? ''} alt="" className="w-28 h-20 object-cover rounded-[2px] border border-zinc-800" />
+        ) : (
+          <div className="w-28 h-20 rounded-[2px] border border-dashed border-zinc-800 flex items-center justify-center text-[10px] tracking-[0.15em] uppercase text-zinc-600">
+            None
+          </div>
+        )}
+        <div className="flex flex-col gap-2">
+          <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+          <Btn onClick={() => inputRef.current?.click()} disabled={busy}>
+            {busy ? 'Uploading…' : path ? 'Replace' : 'Upload'}
+          </Btn>
+          {path && <Btn variant="danger" onClick={remove} disabled={busy}>Remove</Btn>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PhotosTab() {
+  const [settings, setSettings] = useState<WeddingSettings | null>(null)
+  const [gallery, setGallery] = useState<PhotoItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [uploadingGallery, setUploadingGallery] = useState(false)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
+
+  async function load() {
+    const [s, g] = await Promise.all([fetchSettings(), fetchAll<PhotoItem>('wedding_photos', 'position')])
+    setSettings(s); setGallery(g); setLoading(false)
+  }
+  useEffect(() => { load() }, [])
+
+  async function setStoryPhoto(path: string | null) {
+    if (await saveSettings({ story_photo_path: path })) load()
+  }
+  async function setStdPhoto(path: string | null) {
+    if (await saveSettings({ save_the_date_photo_path: path })) load()
+  }
+
+  async function handleGalleryFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (!files.length) return
+    setUploadingGallery(true)
+    let position = gallery.length
+    for (const file of files) {
+      const path = await uploadPhoto(file, 'gallery')
+      if (path) {
+        await insertRow<PhotoItem>('wedding_photos', { storage_path: path, caption: null, position }, 'add photo')
+        position++
+      }
+    }
+    setUploadingGallery(false)
+    load()
+  }
+
+  async function removeGalleryPhoto(p: PhotoItem) {
+    if (await deleteRow('wedding_photos', p.id, 'remove photo')) {
+      await deletePhotoFile(p.storage_path)
+      load()
+    }
+  }
+
+  if (loading || !settings) return <Empty>Loading…</Empty>
+  return (
+    <>
+      <div className="grid sm:grid-cols-2 gap-6 mb-8">
+        <PhotoSlot label="Story photo" path={settings.story_photo_path} prefix="story" onChange={setStoryPhoto} />
+        <PhotoSlot label="Save the Date photo" path={settings.save_the_date_photo_path} prefix="save-the-date" onChange={setStdPhoto} />
+      </div>
+
+      <div className="flex items-baseline justify-between mb-1">
+        <Label>Gallery</Label>
+        <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-600">{gallery.length}</span>
+      </div>
+      <p className="text-sm text-zinc-500 mb-4">Shown on /photos. Add as many as you like.</p>
+
+      <input ref={galleryInputRef} type="file" accept="image/*" multiple onChange={handleGalleryFiles} className="hidden" />
+      <Btn variant="primary" onClick={() => galleryInputRef.current?.click()} disabled={uploadingGallery}>
+        {uploadingGallery ? 'Uploading…' : '+ Add photos'}
+      </Btn>
+
+      <div className="mt-4">
+        {gallery.length === 0 ? <Empty>No gallery photos yet.</Empty> : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            {gallery.map(p => (
+              <div key={p.id} className="relative">
+                <img
+                  src={photoUrl(p.storage_path) ?? ''} alt=""
+                  className="aspect-square object-cover rounded-[2px] border border-zinc-800 w-full"
+                />
+                <button
+                  onClick={() => removeGalleryPhoto(p)}
+                  className="absolute top-1 right-1 text-[10px] tracking-[0.1em] uppercase bg-black/70 text-zinc-300 hover:text-rose-400 px-1.5 py-0.5 rounded-[2px] transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   )
 }
@@ -377,6 +527,7 @@ export default function Content() {
       </div>
 
       {view === 'story' && <StoryTab />}
+      {view === 'photos' && <PhotosTab />}
       {view === 'faq' && <FaqTab />}
       {view === 'travel' && <TravelTab />}
       {view === 'registry' && <RegistryTab />}

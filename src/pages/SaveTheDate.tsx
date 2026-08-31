@@ -70,15 +70,23 @@ export default function SaveTheDate() {
         {wedding.venue.city || 'Location to be announced'}
       </p>
 
-      {/* Engagement photo placeholder */}
-      <div
-        className="mx-auto mb-14 max-w-[420px] aspect-[4/3] rounded-[2px] border border-zinc-200 flex items-center justify-center"
-        aria-hidden="true"
-      >
-        <span className="text-[10px] tracking-[0.3em] uppercase text-zinc-600">
-          Photo Coming Soon
-        </span>
-      </div>
+      {/* Engagement photo */}
+      {wedding.saveTheDatePhotoUrl ? (
+        <img
+          src={wedding.saveTheDatePhotoUrl}
+          alt=""
+          className="mx-auto mb-14 max-w-[420px] w-full aspect-[4/3] object-cover rounded-[2px]"
+        />
+      ) : (
+        <div
+          className="mx-auto mb-14 max-w-[420px] aspect-[4/3] rounded-[2px] border border-zinc-200 flex items-center justify-center"
+          aria-hidden="true"
+        >
+          <span className="text-[10px] tracking-[0.3em] uppercase text-zinc-600">
+            Photo Coming Soon
+          </span>
+        </div>
+      )}
 
       <div className="mb-14 flex justify-center">
         <CountdownTimer targetDate={wedding.dateTimeISO} />
