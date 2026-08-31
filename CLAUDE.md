@@ -339,7 +339,7 @@ No manual `vercel --prod` needed. `vercel.json` has a catch-all rewrite for Reac
 4. Add engagement photo to Story page (`src/pages/StoryPage.tsx`) and Save the Date (`src/pages/SaveTheDate.tsx`) — no image-upload path exists yet, this is still a code change
 5. Write the real story in `src/pages/StoryPage.tsx` (three placeholder sections) — also still static, not database-backed
 6. Add guests via `/admin/guests`; addresses if invitations are going out by mail
-7. Set custom domain `sallyjason.com` in Vercel dashboard
+7. ~~Set custom domain~~ — done: `sallyjason.com` is live and pointed at the `union` Vercel project
 8. Flip **Site status** to Live at `/admin/settings` — takes effect immediately, no deploy
 
 ## Commit and push after every change
