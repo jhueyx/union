@@ -120,7 +120,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-[1100px] mx-auto px-6 py-12 space-y-8">
       <PageHeader
-        title="Union"
+        title="Sally & Jason"
         action={
           date ? (
             <span className="text-[10px] tracking-[0.15em] uppercase text-zinc-500">

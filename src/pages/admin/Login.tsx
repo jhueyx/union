@@ -21,7 +21,7 @@ export default function Login() {
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 mb-8 text-center">
-          Admin — Union
+          Admin — Sally &amp; Jason
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
