@@ -29,13 +29,22 @@ publicly readable, no deploy needed to flip it:
 
 ## Design rules (never break these)
 
-- Black, white, gray only. No color accents except status indicators in admin (emerald/rose/amber).
-- No floral graphics, no script fonts (except Great Vibes for the SJ monogram only), no gold gradients, no hearts, no wedding clichés.
+- Black, white, gray only. No color accents except status indicators in admin (emerald/rose/amber), and the coming-soon-page floral background below.
+- No floral graphics, no script fonts (except Great Vibes for the SJ monogram only), no gold gradients, no hearts, no wedding clichés — **except** `src/components/ComingSoonBackground.tsx`, a deliberate, scoped exception (see below).
 - Light mode only. No dark theme, no toggle — the site looks the same on every device regardless of OS appearance.
 - All buttons: `rounded-[2px]` (nearly square corners).
 - Max content width: `700px` (admin: `900px`).
 - Section labels: `text-[10px] tracking-[0.3em] uppercase`.
 - Font: Inter everywhere except the SJ monogram (Great Vibes).
+
+## Coming-soon background exception
+
+`src/components/ComingSoonBackground.tsx` — a blurred SVG watercolor-floral
+background (sage/blush/cream), rendered only in `Home.tsx` when `!isLive`.
+This is a deliberate, one-page exception to the site-wide "no florals, no
+wedding clichés" rule above — the rest of the site (Story, RSVP, Schedule,
+etc.) stays black/white/gray. Don't reuse this component or its palette
+elsewhere without checking with the couple first.
 
 ## Pages
 
