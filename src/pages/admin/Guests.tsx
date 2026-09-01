@@ -187,6 +187,18 @@ export default function Guests() {
     if (added) { setNewGuest(''); setNewGuestIsChild(false); setAddingTo(null); load() }
   }
 
+  async function renameGuest(g: Guest, raw: string) {
+    const full = raw.trim()
+    // Same no-op-on-empty rule as renameHousehold: an unnamed guest row is
+    // unidentifiable, so fall back to reloading the previous value instead.
+    if (!full) { load(); return }
+    const parts = full.split(/\s+/)
+    const first_name = parts[0]
+    const last_name = parts.slice(1).join(' ') || ''
+    if (first_name === g.first_name && last_name === g.last_name) return
+    if (await updateRow('guests', g.id, { first_name, last_name }, 'rename guest')) load()
+  }
+
   async function removeGuest(id: string) {
     if (await deleteRow('guests', id, 'remove guest')) load()
   }
@@ -422,7 +434,20 @@ export default function Guests() {
                         : ['Pending', 'text-amber-400']
                       return (
                         <li key={g.id} className="flex items-center justify-between py-1.5 border-b border-zinc-900 last:border-0">
-                          <span className="text-sm text-zinc-300">{g.first_name} {g.last_name}</span>
+                          {/* Click-to-edit, same pattern as the household name above. */}
+                          <input
+                            defaultValue={`${g.first_name} ${g.last_name}`.trim()}
+                            onBlur={e => renameGuest(g, e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                              if (e.key === 'Escape') {
+                                (e.target as HTMLInputElement).value = `${g.first_name} ${g.last_name}`.trim()
+                                ;(e.target as HTMLInputElement).blur()
+                              }
+                            }}
+                            aria-label="Guest name"
+                            className="text-sm text-zinc-300 bg-transparent border border-transparent rounded-[2px] -mx-2 px-2 py-0.5 max-w-[240px] hover:border-zinc-800 focus:border-zinc-600 focus:outline-none transition-colors"
+                          />
                           <span className="flex items-center gap-4">
                             {/* Lit means child, dim means adult — a toggle rather
                                 than a checkbox, so the row stays a single line
