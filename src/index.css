@@ -11,6 +11,13 @@
 
   html {
     scroll-behavior: smooth;
+    /* Matches RootLayout's bg-[#fafafa] exactly, so the iOS safe-area strip
+       composites the right color instead of the browser's white default. */
+    background: #fafafa;
+  }
+
+  body {
+    background: #fafafa;
   }
 
   /* Respect user motion preference — collapse all animations */

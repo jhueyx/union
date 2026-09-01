@@ -21,7 +21,12 @@ export default function Nav() {
   const links = NAV_LINKS.filter(l => isNavVisible(l.to))
 
   return (
-    <header className="sticky top-0 z-50 bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-100">
+    // Flat background (no backdrop-blur) matching html/body exactly, plus
+    // safe-area-top padding — sticky header sitting at the true top edge
+    // under viewport-fit=cover. A translucent/blurred header here would
+    // reproduce the iOS status-bar seam found and fixed across several
+    // other apps tonight (see feedback_ios_pwa_statusbar_seam memory).
+    <header className="sticky top-0 z-50 bg-[#fafafa] border-b border-zinc-100 pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-[700px] mx-auto px-6 h-14 flex items-center justify-between">
         <Link
           to="/"
