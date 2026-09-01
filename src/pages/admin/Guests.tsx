@@ -289,7 +289,7 @@ export default function Guests() {
           onChange={e => setSearch(e.target.value)}
           className="flex-1 min-w-[220px]"
         />
-        <form onSubmit={addHousehold} className="flex gap-2">
+        <form onSubmit={addHousehold} className="flex flex-wrap gap-2">
           <TextInput
             placeholder="Add household…"
             value={newHousehold}
