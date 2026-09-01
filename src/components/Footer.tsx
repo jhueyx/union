@@ -1,5 +1,11 @@
+import { useSiteContent } from '../lib/siteContent'
+
 export default function Footer() {
+  const { isLive } = useSiteContent()
   const year = new Date().getFullYear()
+
+  // Hidden in coming-soon mode, same as Nav — no footer chrome on the bare landing page.
+  if (!isLive) return null
 
   return (
     <footer className="w-full py-8 px-6">
