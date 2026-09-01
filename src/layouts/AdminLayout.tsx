@@ -43,6 +43,21 @@ export default function AdminLayout() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // A web manifest's start_url is fixed - "Add to Home Screen" always
+  // launches there regardless of which page you saved it from. The public
+  // site's manifest points start_url at "/", so an icon saved from /admin
+  // was launching into the coming-soon page instead. Swapping to a
+  // dedicated admin manifest (start_url: "/admin", dark theme colors
+  // matching this layout's bg-[#0a0a0a]) while this layout is mounted
+  // fixes that - RootLayout swaps it back for the public site.
+  useEffect(() => {
+    const link = document.getElementById('webManifest') as HTMLLinkElement | null
+    if (!link) return
+    const original = link.href
+    link.href = '/manifest-admin.json'
+    return () => { link.href = original }
+  }, [])
+
   // Still loading session from Supabase
   if (session === undefined) return null
 
