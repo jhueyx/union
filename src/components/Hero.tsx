@@ -32,7 +32,7 @@ export default function Hero() {
           isLive ? 'mb-10' : 'mb-12 md:mb-14',
         ].join(' ')}
       >
-        A celebration, thoughtfully designed.
+        We&apos;re getting married.
       </p>
 
       {/* ── Hairline divider ──────────────────────────────────── */}
