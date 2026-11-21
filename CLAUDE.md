@@ -131,11 +131,22 @@ Core tables in `public` (the planner adds several more — see "The planner" bel
 - `dietary_restrictions`, `song_request`, `notes` text nullable
 - `submitted_at` timestamptz
 
-**RLS policies:**
-- `households` + `guests`: anyone can SELECT, only authenticated can INSERT/UPDATE/DELETE
-- `rsvp_responses`: anyone can INSERT + UPDATE (guests submitting/updating), only authenticated can SELECT + DELETE
+**RLS policies** (since 2026-11-20, `supabase/migrations/20261120_lock_down_wedding_and_blog.sql`):
+- "Admin" means a row in `public.app_admins` with `app = 'wedding'`, checked by
+  `public.is_app_admin('wedding')`. **Not** `auth.role() = 'authenticated'` — this
+  Supabase project is shared with other apps that have open sign-up, so any
+  stranger can be "authenticated". Add an admin by inserting into `app_admins`
+  from the SQL editor; the table has no client policies.
+- `households`, `guests`, `rsvp_responses`: admin-only for everything. No public
+  access (they hold emails, phones, home addresses and invite codes).
+- The public RSVP flow uses two SECURITY DEFINER RPCs instead:
+  - `wedding_rsvp_lookup(p_query)` takes an invite code, or an **exact** last name
+    or "first last", and returns `{id, name, max_guests, guests:[{id, household_id,
+    first_name, last_name, is_child}]}` only.
+  - `wedding_rsvp_submit(p_household_id, p_rows)` checks each `guest_id`
+    belongs to the household, then upserts on `guest_id`.
 
-Guests can re-submit their RSVP to update it — uses `upsert` with `onConflict: 'guest_id'`.
+Guests can re-submit their RSVP to update it (the submit RPC upserts on `guest_id`).
 
 ## Admin (`/admin`)
 
@@ -152,7 +163,7 @@ lives at `/admin/guests`, not here; don't reintroduce it on the Dashboard.
 ## The planner
 
 Seven more tables back the planning suite, all admin-only (RLS requires
-`auth.role() = 'authenticated'`) except where noted, all accessed through
+`is_app_admin('wedding')`) except where noted, all accessed through
 `src/lib/planning.ts` (see "Admin writes must report failure" below):
 
 - **`wedding_settings`** — one row, `id = true` enforced by a check constraint.
@@ -222,8 +233,8 @@ admin-write tables (edited at `/admin/content`), plus `wedding_settings`:
   the internal day-of running order, which can carry vendor call times and
   other detail not meant for guests — don't conflate the two.
 
-All four: RLS `select using (true)`, admin `for all using (auth.role() =
-'authenticated')` — same shape as `wedding_meals`. `position` is set to the
+All four: RLS `select using (true)`, admin `for all using
+(is_app_admin('wedding'))` — same shape as `wedding_meals`. `position` is set to the
 list length at insert time (append order); there's no drag-to-reorder yet.
 
 The old `wedding_registry` table (`store`, `url`, `note`, `position`) is no
@@ -284,8 +295,8 @@ rather than folding it into the big form's `Draft`.
 import from public pages (`photoUrl()` is a pure string builder, no auth or
 network call). Backs the `wedding-photos` bucket: public bucket (photos are
 meant to be seen — served straight from the public URL, no signed URLs), RLS
-on `storage.objects` restricts insert/update/delete to `auth.role() =
-'authenticated'`, scoped to `bucket_id = 'wedding-photos'` so it can't touch
+on `storage.objects` restricts insert/update/delete to
+`is_app_admin('wedding')`, scoped to `bucket_id = 'wedding-photos'` so it can't touch
 the other apps' buckets sharing this Supabase project (`hl-media`,
 `habits-avatars`). `uploadPhoto()` never trusts the original filename — it
 renames to `{prefix}/{uuid}.{ext}` and rejects anything over 10MB client-side
@@ -312,7 +323,7 @@ couple, not made here. The route works by direct link regardless.
 Public sign-and-read guestbook — unlike the other content tables, this one is
 **public INSERT** too (guests write their own entries unauthenticated), not
 just public SELECT. RLS: `select using (true)`, `insert with check (true)`,
-`delete using (auth.role() = 'authenticated')` — no UPDATE policy, entries
+`delete using (is_app_admin('wedding'))` — no UPDATE policy, entries
 aren't editable once posted. `name`/`message` both have a `char_length`
 check constraint (1–100 / 1–1000) as a floor against empty or absurdly long
 spam, but there's no captcha or rate limit — moderation is manual, at

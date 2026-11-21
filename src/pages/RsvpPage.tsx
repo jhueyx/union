@@ -43,31 +43,11 @@ async function lookupHousehold(query: string): Promise<HouseholdWithGuests | nul
   const trimmed = query.trim()
   if (!trimmed) return null
 
-  // Try invite code first (exact, case-insensitive)
-  const { data: byCode } = await supabase
-    .from('households')
-    .select('*, guests(*)')
-    .eq('invite_code', trimmed.toUpperCase())
-    .maybeSingle()
-
-  if (byCode) return byCode as HouseholdWithGuests
-
-  // Fall back to name search across guests
-  const { data: matched } = await supabase
-    .from('guests')
-    .select('household_id')
-    .or(`last_name.ilike.%${trimmed}%,first_name.ilike.%${trimmed}%`)
-    .limit(1)
-
-  if (!matched?.[0]) return null
-
-  const { data: byName } = await supabase
-    .from('households')
-    .select('*, guests(*)')
-    .eq('id', matched[0].household_id)
-    .maybeSingle()
-
-  return (byName as HouseholdWithGuests) ?? null
+  // guests/households are admin-only under RLS. The public lookup goes through
+  // a SECURITY DEFINER function that matches the invite code, or an exact last
+  // name / "first last", and returns names only (no email, phone, or address).
+  const { data } = await supabase.rpc('wedding_rsvp_lookup', { p_query: trimmed })
+  return (data as HouseholdWithGuests | null) ?? null
 }
 
 export default function RsvpPage() {
@@ -136,7 +116,6 @@ export default function RsvpPage() {
     setLoading(true)
 
     const rows = guestStates.map((gs) => ({
-      household_id: household.id,
       guest_id: gs.guest.id,
       attending: gs.attending ?? false,
       meal_choice_id: gs.attending ? gs.mealChoiceId || null : null,
@@ -145,9 +124,11 @@ export default function RsvpPage() {
       notes: notes || null,
     }))
 
-    const { error: err } = await supabase
-      .from('rsvp_responses')
-      .upsert(rows, { onConflict: 'guest_id' })
+    // Checks every guest belongs to this household, then upserts on guest_id.
+    const { error: err } = await supabase.rpc('wedding_rsvp_submit', {
+      p_household_id: household.id,
+      p_rows: rows,
+    })
 
     setLoading(false)
     if (err) {
