@@ -12,12 +12,10 @@ export default function InviteCode() {
 
   useEffect(() => {
     if (!inviteCode) { setHousehold(null); return }
+    // Admin-only table; the public path is the names-only lookup function.
     supabase
-      .from('households')
-      .select('*, guests(*)')
-      .eq('invite_code', inviteCode.toUpperCase())
-      .maybeSingle()
-      .then(({ data }) => setHousehold((data as HouseholdWithGuests) ?? null))
+      .rpc('wedding_rsvp_lookup', { p_query: inviteCode })
+      .then(({ data }) => setHousehold((data as HouseholdWithGuests | null) ?? null))
   }, [inviteCode])
 
   if (household === undefined) return null
